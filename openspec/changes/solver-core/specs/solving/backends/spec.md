@@ -51,3 +51,14 @@ Adding a backend SHALL require only providing its module and including it in the
 #### Scenario: Test-only backend
 - **WHEN** a test composes the engine with an extra backend that declares one query kind
 - **THEN** queries of that kind are routed to it, and the engine's own modules are used unmodified
+
+### Requirement: Backend failures reported
+When a backend fails to load (for example its WebAssembly cannot be fetched), cannot compile a model construct, or exceeds a configurable time limit, the engine SHALL report an error naming the backend and the cause, SHALL try the next preferred backend that declares the needed kind, and SHALL NOT return a partial answer.
+
+#### Scenario: WebAssembly not available
+- **WHEN** the preferred backend's WebAssembly file cannot be loaded and a second loaded backend declares the same kind
+- **THEN** the second backend answers, and the failure of the first is reported
+
+#### Scenario: Time limit exceeded
+- **WHEN** a query exceeds the time limit on every capable backend
+- **THEN** the engine returns an error naming the query and the backends tried
