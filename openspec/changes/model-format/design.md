@@ -54,6 +54,35 @@ Option references are `Decision.Option` strings or the `is`/`in` forms; families
 
 *Alternatives:* JSON for authoring (noisier for review), TOML (awkward for nested expressions). YAML with a JSON Schema keeps editor support (completion, inline errors) through the schema.
 
+### 1a. Linked decision records
+
+```yaml
+decisions:
+  Sessions:
+    summary: Where session state lives
+    record: ../docs/decisions/0012-session-state.md
+    options: {Server: {cost: 3, value: 5}, Token: {cost: 1, value: 3}}
+```
+
+```markdown
+---
+status: accepted
+date: 2026-11-20
+x-decision:
+  decision: Sessions
+  chosen: Server
+  relies-on: [R1]
+---
+# Keep session state on the server
+...
+```
+
+The `x-decision` field fits both MADR (frontmatter is optional metadata) and EventCatalog ADRs (custom `x-` properties are allowed), so the same convention works whether records live in `docs/decisions/` or in a catalog. The loader reads only frontmatter; record bodies are never parsed.
+
+### 1b. Reserved instance qualifiers
+
+`Name[instance]` is reserved for a later change in which a decision template applies once per unit (for example per service). Reserving it now keeps today's models valid once instances arrive. The validator recognises the form and rejects it with "instance qualifiers are reserved".
+
 ### 2. Validation in two passes
 
 1. JSON Schema (structure, types, enums), with errors mapped back to YAML line and column through the parser's source map.

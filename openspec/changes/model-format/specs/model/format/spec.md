@@ -13,6 +13,20 @@ A model SHALL be a YAML document whose structure is defined by the project's JSO
 - **WHEN** the validator is given the path of a model file stored outside this repository
 - **THEN** the model is loaded and validated the same way as the bundled examples
 
+### Requirement: Identifiers
+Every decision, option, hidden choice, assumption, consequence and rule SHALL have an identifier made of letters, digits and underscores, starting with a letter. An option is referenced as `Decision.Option`, and a nested option as `Decision.Family.Option`.
+
+#### Scenario: Nested option reference
+- **WHEN** a rule refers to `Hosting.Serverless.Functions`
+- **THEN** the reference resolves to the `Functions` option in the `Serverless` family of `Hosting`
+
+### Requirement: Reserved instance qualifiers
+The form `Name[instance]` (for example `Hosting[orders]`) SHALL be reserved for future per-instance decisions. A model that uses it SHALL fail validation with an error stating that instances are not supported yet, and no other meaning SHALL be given to square brackets in identifiers.
+
+#### Scenario: Instance qualifier used today
+- **WHEN** a rule refers to `Hosting[orders].Serverless`
+- **THEN** validation fails with an error naming the reference and stating that instance qualifiers are reserved
+
 ### Requirement: Decisions and options
 A model SHALL declare decisions, each with two or more options; exactly one option of each decision holds in a configuration. An option MAY be a family that contains further options.
 
