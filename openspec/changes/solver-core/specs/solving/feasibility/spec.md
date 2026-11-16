@@ -65,6 +65,13 @@ For an assumption whose value is unknown, the solver SHALL check each value sepa
 - **WHEN** an option's feasibility does not change with an unknown assumption
 - **THEN** that assumption is not listed as a dependency of the option
 
+### Requirement: Configuration-level dependencies
+When every feasible completion of the current choices requires an assumption to have one value, the solver SHALL report that assumption once as a dependency of the whole configuration, and SHALL NOT repeat it on each option.
+
+#### Scenario: Assumption every option depends on
+- **WHEN** the choices are `{Hosting: Serverless.Functions, Realtime: WebSockets}` and A1 is unknown
+- **THEN** A1 = yes is reported once as a configuration-level dependency, and no option lists A1 as its own dependency
+
 ### Requirement: Limit on assumption combinations
 The solver SHALL toggle only the unknown assumptions that can affect an option, not all combinations of every unknown assumption.
 

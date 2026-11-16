@@ -59,4 +59,4 @@ Builds on the `model-format` change (format, validator, both bundled models, Mak
 ## Workflow follow-up
 
 - Archive the change after review.
-- Candidate later changes as query modules: what-if, which open question to answer first (value of information), EventCatalog generator.
+- Candidate later changes as query modules: goals on consequences ("what must hold for this consequence to stay false?", answered with forced and impossible choices and repairs), what-if, which open question to answer first (value of information), EventCatalog generator (decisions as EventCatalog ADRs via `@eventcatalog/sdk` `writeAdr`).
