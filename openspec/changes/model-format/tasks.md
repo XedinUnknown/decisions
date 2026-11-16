@@ -26,8 +26,8 @@ Test tasks come before the implementation tasks they cover. A new test must fail
 - [ ] 4.1 Write one test per scenario in `specs/model/validation/spec.md`, including line and column in error messages; verify they fail because the validator does not exist
 - [ ] 4.2 Implement the semantic pass (references, duplicates, consequence cycles, scales, numeric terms, warnings) and verify the tests from 4.1 pass
 - [ ] 4.3 Implement the `validate` command and verify it exits 0 on both bundled models and non-zero on an invalid fixture
-- [ ] 4.4 Write one test per scenario in `specs/model/decision-records/spec.md`, using MADR and EventCatalog-style record fixtures; verify they fail because records are not loaded
-- [ ] 4.5 Implement record loading (frontmatter only) and the record consistency checks, and verify the tests from 4.4 pass
+- [ ] 4.4 Write one test per scenario in `specs/model/decision-records/spec.md`, using MADR and EventCatalog-style record fixtures; verify they fail because sync and check do not exist
+- [ ] 4.5 Implement the `sync` command (frontmatter only, in-place YAML edit, consistency checks) and the `check` command (fingerprint and hand-edit drift), add `check` to CI, and verify the tests from 4.4 pass and an unchanged sync leaves the file byte-for-byte identical
 - [ ] 4.6 Document the format in `docs/model-format.md` (every element kind with an example, the decision-record convention, and the reserved instance syntax) and verify every example in that document passes the validator in a test
 
 ## Workflow follow-up

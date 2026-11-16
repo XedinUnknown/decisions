@@ -61,6 +61,11 @@ decisions:
   Sessions:
     summary: Where session state lives
     record: ../docs/decisions/0012-session-state.md
+    synced:                    # written only by `sync`
+      status: accepted
+      chosen: Server
+      relies-on: [R1]
+      fingerprint: sha256:3f1c...   # of the record's frontmatter
     options: {Server: {cost: 3, value: 5}, Token: {cost: 1, value: 3}}
 ```
 
@@ -77,7 +82,7 @@ x-decision:
 ...
 ```
 
-The `x-decision` field fits both MADR (frontmatter is optional metadata) and EventCatalog ADRs (custom `x-` properties are allowed), so the same convention works whether records live in `docs/decisions/` or in a catalog. The loader reads only frontmatter; record bodies are never parsed.
+The `x-decision` field fits both MADR (frontmatter is optional metadata) and EventCatalog ADRs (custom `x-` properties are allowed), so the same convention works whether records live in `docs/decisions/` or in a catalog. Only the `sync` and `check` commands read records, and only their frontmatter; loading a model never does. `sync` rewrites the `synced` blocks in place while preserving the rest of the YAML (comments and ordering) by editing the parsed document rather than re-serialising it. A later adapter can sync from EventCatalog through its SDK (`getAdr`) instead of files.
 
 ### 1b. Reserved instance qualifiers
 
