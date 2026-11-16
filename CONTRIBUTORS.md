@@ -33,7 +33,7 @@ Work goes from spec to tests to implementation, in that order:
 
 A change's `tasks.md` lists test tasks before the implementation tasks they cover.
 
-Tests of solving behaviour run against two bundled models: a minimal example, also used in the README, and a reference model whose size and structure are comparable to a real-world specification. Every iteration passes the full suite against both; CI enforces this on every push.
+Tests of solving behaviour run against two bundled models: a minimal example, also used in the README, and a reference model whose size and structure are comparable to a real-world specification. Every iteration passes the full suite against both; CI enforces this on every push. A scenario that needs a construct neither bundled model has may also use a small fixture, in addition to the bundled models, never instead.
 
 ### Decision records
 

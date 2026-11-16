@@ -57,11 +57,19 @@ The loader SHALL interpret a decision's synced status as follows: `accepted` mak
 - **THEN** the loaded model lists `Sessions = Token` as a candidate, and no choice is imposed for `Sessions`
 
 ### Requirement: Record consistency checks
-The sync SHALL refuse to write, and report an error naming the record file, when a record's `x-decision.decision` does not match the decision that links to it, when `chosen` is not an option of that decision, or when `relies-on` names an id the model does not declare.
+The sync SHALL refuse to write, and report an error naming the record file, when the record file is missing, has no or malformed frontmatter, has no `x-decision` field, when `x-decision.decision` does not match the decision that links to it, when `chosen` is not an option path of that decision, when `relies-on` names an id the model does not declare, or when the status is `accepted` or `proposed` without a `chosen` option.
 
 #### Scenario: Chosen option missing from the model
 - **WHEN** a record says `chosen: Cookie` and decision `Sessions` has no option `Cookie`
 - **THEN** the sync reports an error naming the record and `Cookie`, and the model is not changed
+
+#### Scenario: Missing record file
+- **WHEN** a decision links to a record file that does not exist
+- **THEN** the sync and the check both report an error naming the decision and the path
+
+#### Scenario: Two decisions link the same record
+- **WHEN** decisions `Sessions` and `SessionStore` both link to the same record
+- **THEN** validation fails with an error naming both decisions and the record
 
 ### Requirement: Summaries only
 A decision MAY carry a one-line `summary`. When it links to a record, the model SHALL NOT carry the decision's rationale, or a status or chosen option outside the `synced` block; validation SHALL reject either.
@@ -75,8 +83,12 @@ A decision MAY carry a one-line `summary`. When it links to a record, the model 
 - **THEN** validation fails with an error naming the decision and the record
 
 ### Requirement: Models without records
-A decision that links to no record MAY declare `status` and `chosen` directly, and the loader SHALL give them the same meanings as synced values.
+A decision that links to no record MAY declare `status`, `chosen` and `relies-on` directly, and the loader SHALL give them the same meanings as synced values. An `accepted` or `proposed` status without `chosen` SHALL fail validation.
 
 #### Scenario: Team without ADRs
 - **WHEN** a decision declares `status: accepted` and `chosen: Server` and no record
 - **THEN** the model is valid and `Sessions = Server` is an accepted choice
+
+#### Scenario: Accepted without a chosen option
+- **WHEN** a decision declares `status: accepted` without `chosen`
+- **THEN** validation fails with an error naming the decision

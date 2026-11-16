@@ -12,8 +12,8 @@ Test tasks come before the implementation tasks they cover. A new test must fail
 
 ## 2. Bundled models (fixtures first)
 
-- [ ] 2.1 Write `examples/minimal.yaml` per design.md §3 and add it to the README's "what this solves" section with a short walk-through; verify the README renders the example and its expected answers
-- [ ] 2.2 Write `examples/reference.yaml` per design.md §3, with costs and values sized by the Fibonacci guide and at least one combination term
+- [ ] 2.1 Write `examples/minimal.yaml` per design.md §3.1 and add it to the README's "what this solves" section with the questions it answers (answers are checked by `solver-core`); verify it matches the design table
+- [ ] 2.2 Write `examples/reference.yaml` exactly per design.md §3.2; verify every rule, consequence, cost and value matches the design tables
 - [ ] 2.3 Write a test that checks `reference.yaml` against the profile targets in the "Reference model profile" scenario; verify it fails until the loader exists
 
 ## 3. Schema and loader

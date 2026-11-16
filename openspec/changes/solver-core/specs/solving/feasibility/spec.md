@@ -2,108 +2,123 @@
 
 ## Purpose
 
-Tells the caller, for a model and the current choices, which options remain feasible and which open questions that feasibility depends on.
+Tells the caller, for a model and the current choices, which options remain feasible, which are forced, which open questions that depends on, and which accepted decisions no longer hold.
 
 ## ADDED Requirements
 
 ### Requirement: Solve request
-The solver SHALL accept a model, a set of choices (decision id to option id, or hidden choice id to true/false) and a set of assumption values (assumption id to true, false or unknown), and SHALL answer in terms of the model's own ids only.
+The solver SHALL accept a model, choices (a decision id mapped to an option path or family path within it, or a hidden choice mapped to yes or no), assumption values (a yes/no assumption mapped to yes, no or unknown; a numeric assumption mapped to an integer within its bounds or unknown), and a confidence threshold (default `verified`). It SHALL answer only in the model's ids and paths.
 
-#### Scenario: Ids in, ids out
-- **WHEN** the solver is asked about the reference model with choices `{Sessions: Token}`
-- **THEN** every option, rule, assumption and consequence in the answer is identified by its id in the reference model
+#### Scenario: Family as a choice
+- **WHEN** the choices are `{Hosting: Serverless}`
+- **THEN** the solver treats Hosting as "one of Serverless.Functions or Serverless.Edge"
 
 #### Scenario: Unknown id
-- **WHEN** a choice refers to a decision or option id the model does not define
-- **THEN** the solver rejects the request with an error naming the unknown id, and returns no feasibility result
+- **WHEN** a choice refers to a decision or option path the model does not define
+- **THEN** the solver rejects the request with an error naming the unknown id, and returns no result
+
+#### Scenario: Numeric value out of bounds
+- **WHEN** A10 is given the value 5000 and its bounds are 0 to 2000
+- **THEN** the solver rejects the request with an error naming A10 and its bounds
+
+### Requirement: Accepted decisions as choices
+Decisions whose status in the model is `accepted` SHALL count as choices of their chosen option unless the request chooses something else for the same decision; the solver SHALL report every such override.
+
+#### Scenario: Request overrides an accepted decision
+- **WHEN** the reference model's CDN decision is accepted with `HostProvider` and the request chooses `{CDN: Independent}`
+- **THEN** CDN = Independent is used, and the answer reports that it overrides the accepted decision
+
+### Requirement: Accepted decisions that no longer hold
+The solver SHALL report an accepted decision as stale when its `relies-on` names a retired rule, and as in conflict when its chosen option is infeasible under the other choices and known assumption values.
+
+#### Scenario: Decision relying on a retired rule
+- **WHEN** the reference model is solved with no choices
+- **THEN** the CDN decision is reported stale, naming R14 and the fact R11 that retired it
 
 ### Requirement: Option feasibility
-For every option the caller has not chosen, the solver SHALL report whether the current choices plus that option can satisfy all hard rules.
+For every option the caller has not chosen, the solver SHALL report whether some completion of the current choices that includes the option satisfies all hard rules, for at least one combination of values of the unknown assumptions.
 
 #### Scenario: Option ruled out by a rule
-- **WHEN** the choices are `{Sessions: Token}` and all assumptions are known
-- **THEN** the hidden choice `InstantRevocation = true` is reported infeasible
+- **WHEN** the choices are `{Sessions: Token}`
+- **THEN** the hidden choice `InstantRevocation = yes` is reported infeasible
 
 #### Scenario: Option still open
 - **WHEN** the choices are `{Sessions: Server}`
-- **THEN** `InstantRevocation = true` is reported feasible
+- **THEN** `InstantRevocation = yes` is reported feasible
 
 #### Scenario: Agreement with exhaustive enumeration
-- **WHEN** feasibility is computed for any reachable set of choices on the reference model
-- **THEN** each option's result equals the result of exhaustively enumerating all assignments of the model
+- **WHEN** feasibility is computed for any reachable set of choices on either bundled model
+- **THEN** each option's result equals the result of exhaustively enumerating all assignments
 
-### Requirement: Forced options
-The solver SHALL report as forced every unchosen option that holds in all feasible completions of the current choices and known assumption values.
-
-#### Scenario: Option forced by a rule
-- **WHEN** the choices are `{InstantRevocation: true}`
-- **THEN** `Sessions = Server` is reported forced
-
-#### Scenario: Nothing forced
-- **WHEN** no choices are made and every decision has at least two options that appear in some feasible completion
-- **THEN** no option is reported forced
-
-### Requirement: Nested options
-The solver SHALL treat an option family (for example "serverless" with "functions" and "edge") as feasible when at least one of its members is feasible, and SHALL report each member separately.
+### Requirement: Option families
+The solver SHALL report a family as feasible when at least one of its options is feasible, and SHALL report each option of the family separately.
 
 #### Scenario: Family feasible through one member
-- **WHEN** the choices make edge functions infeasible but leave plain functions feasible
-- **THEN** the family is reported feasible, edge functions infeasible and plain functions feasible
+- **WHEN** A5 is set to no and no choices are made in the reference model
+- **THEN** `Hosting.Serverless` is feasible, `Hosting.Serverless.Edge` is infeasible because of R12, and `Hosting.Serverless.Functions` is feasible
 
-### Requirement: Assumption-dependent feasibility
-For an assumption whose value is unknown, the solver SHALL check each value separately and SHALL report an option as feasible regardless, feasible only if the assumption is true, feasible only if it is false, or infeasible regardless.
+### Requirement: Dependency conditions
+For a feasible option whose feasibility depends on unknown assumptions, the solver SHALL report the condition under which it is feasible, as a minimal set of alternatives, each a conjunction of assumption values (for numeric assumptions, a bound such as `A10 ≤ 500`). An option feasible for every value of the unknown assumptions SHALL be reported without a condition.
 
-#### Scenario: Feasible only under one value
-- **WHEN** the choices are `{Realtime: WebSockets}` and A1 is unknown
-- **THEN** `Hosting = serverless` is reported feasible only if A1 is true
+#### Scenario: Condition on one assumption
+- **WHEN** the choices are `{Realtime: WebSockets}` and A1 is unknown in the reference model
+- **THEN** `Hosting.Serverless.Functions` is feasible under the condition "A1 = yes"
 
-#### Scenario: Assumption closed
-- **WHEN** the same choices are given with A1 set to false
-- **THEN** `Hosting = serverless` is reported infeasible
+#### Scenario: Condition on two assumptions
+- **WHEN** the choices are `{Realtime: WebSockets}` and A1 and A5 are unknown in the reference model
+- **THEN** `Hosting.Serverless.Edge` is feasible under the condition "A1 = yes and A5 = yes"
 
-#### Scenario: Unrelated assumption not reported
-- **WHEN** an option's feasibility does not change with an unknown assumption
-- **THEN** that assumption is not listed as a dependency of the option
+#### Scenario: Numeric condition
+- **WHEN** the threshold is `plausible`, A10 is unknown and `Hosting = Serverless.Functions` is unchosen
+- **THEN** `Hosting.Serverless.Functions` is feasible under a condition that includes `A10 ≤ 500`
 
 ### Requirement: Configuration-level dependencies
-When every feasible completion of the current choices requires an assumption to have one value, the solver SHALL report that assumption once as a dependency of the whole configuration, and SHALL NOT repeat it on each option.
+When every feasible completion of the current choices requires the same assumption values, the solver SHALL report that condition once for the whole configuration, and SHALL NOT repeat it on each option.
 
 #### Scenario: Assumption every option depends on
 - **WHEN** the choices are `{Hosting: Serverless.Functions, Realtime: WebSockets}` and A1 is unknown
-- **THEN** A1 = yes is reported once as a configuration-level dependency, and no option lists A1 as its own dependency
+- **THEN** "A1 = yes" is reported once as a configuration-level condition, and no option lists A1 in its own condition
 
-### Requirement: Limit on assumption combinations
-The solver SHALL toggle only the unknown assumptions that can affect an option, not all combinations of every unknown assumption.
+### Requirement: Forced options
+The solver SHALL report as forced every unchosen option and family that holds in all feasible completions of the current choices for every value of the unknown assumptions under which the configuration is consistent. An option forced only under some assumption values SHALL be reported with that condition.
 
-#### Scenario: Irrelevant assumptions are not combined
-- **WHEN** all 14 assumptions of the reference model are unknown
-- **THEN** checking one option toggles only the assumptions that occur in rules reachable from that option
+#### Scenario: Option forced by a rule
+- **WHEN** the choices are `{InstantRevocation: yes}`
+- **THEN** `Sessions.Server` is reported forced
+
+#### Scenario: Family forced, no single option forced
+- **WHEN** the threshold is `likely` and the choices are `{Sessions: Server, SessionStore: InMemory}` in the reference model
+- **THEN** `Hosting.Containers` is reported forced, and neither `Hosting.Containers.ManagedCluster` nor `Hosting.Containers.PaaS` is
+
+#### Scenario: Nothing forced in the minimal example
+- **WHEN** the minimal example is solved with no choices and A1 unknown
+- **THEN** no option or family is reported forced
 
 ### Requirement: Inconsistent configuration
-When the current choices and known assumption values already violate a hard rule, the solver SHALL report the configuration as inconsistent instead of a feasibility list.
+When the current choices and known assumption values already violate a hard rule, the solver SHALL report the configuration as inconsistent instead of a feasibility list. When a model has no consistent configuration at all, the solver SHALL report it as void.
 
 #### Scenario: Assumption closes against a choice
-- **WHEN** the choices are `{Hosting: Serverless.Functions, Realtime: WebSockets}` and A1 is set to false
+- **WHEN** the choices are `{Hosting: Serverless.Functions, Realtime: WebSockets}` and A1 is set to no
 - **THEN** the configuration is reported inconsistent
 
+#### Scenario: Void model
+- **WHEN** a model's hard rules contradict each other with no choices made
+- **THEN** the solver reports the model as void, with an explanation
+
 ### Requirement: Numeric rules
-The solver SHALL evaluate rules that compare numeric expressions over numeric assumption values and option attributes.
+The solver SHALL evaluate rules that compare linear terms over numeric assumptions and constants.
 
 #### Scenario: Cost exceeds budget
-- **WHEN** the threshold is `plausible`, `Hosting = serverless` is chosen and the expected traffic (A10) times the unit price exceeds the budget
+- **WHEN** the threshold is `plausible`, `Hosting = Serverless.Functions` is chosen and A10 is set to 600 (600 × 2 > 1000)
 - **THEN** the configuration is reported inconsistent
 
 #### Scenario: Cost within budget
-- **WHEN** the threshold is `plausible` and the same choice is made with a traffic value that keeps the cost within the budget
+- **WHEN** the threshold is `plausible`, `Hosting = Serverless.Functions` is chosen and A10 is set to 400
 - **THEN** the configuration is consistent
 
-#### Scenario: Numeric assumption unknown
-- **WHEN** the threshold is `plausible`, `Hosting = serverless` is unchosen and A10 has no value
-- **THEN** the cost rule does not rule the option out, and A10 is listed as an assumption the option's feasibility depends on
-
 ### Requirement: Response time
-On the reference model, a full propagation (every unchosen option, with every relevant unknown assumption toggled) SHALL complete within 2 seconds in a current desktop browser.
+With the clingo backend in a current desktop browser, a full propagation on the reference model (every unchosen option, its condition, and forced options, with no choices made and all assumptions unknown) SHALL complete within 2 seconds.
 
 #### Scenario: Propagation on the reference model
-- **WHEN** a full propagation runs in a browser with no choices made and all assumptions unknown
+- **WHEN** a full propagation runs in a browser with the clingo backend, no choices made and all assumptions unknown
 - **THEN** it finishes within 2 seconds

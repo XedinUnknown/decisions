@@ -7,13 +7,13 @@ Every backend, the test oracle and the AI that maintains models need one authori
 ## What Changes
 
 - Define the model format: YAML for authoring, validated by a JSON Schema plus semantic checks. Element kinds: decisions with options (optionally nested in families), hidden yes/no choices, rules, assumptions (yes/no or numeric), consequences, and cost and value on options and on combinations of options.
-- Define the rule expression language: `is`, `in`, `all`, `any`, `not`, `if`/`then`, and integer comparisons over numeric assumptions and option attributes.
-- Rule metadata: id, source, confidence level (verified, likely, plausible, guess, unrated; [ADR-0004](../../../docs/decisions/0004-confidence-as-ordered-levels.md)), reason. Background facts are allowed and marked as not constraining.
+- Define the rule expression language: atoms (option paths, hidden choices, yes/no assumptions, consequences), `in` over option families, `all`, `any`, `not`, `if`/`then`, and integer comparisons over linear terms (integers, named constants, bounded numeric assumptions, `plus`, `times` with a constant factor).
+- Rule metadata: id, source, confidence level (verified, likely, plausible, guess, unrated; [ADR-0004](../../../docs/decisions/0004-confidence-as-ordered-levels.md)), reason. Background facts are allowed and do not constrain; a rule found to be wrong can be retired by a fact instead of deleted, so decisions relying on it can be found.
 - Cost and value as equal points (every point counts the same), with Fibonacci numbers as an optional sizing guide that produces warnings, or a declared measured unit ([ADR-0006](../../../docs/decisions/0006-relative-cost-and-value.md)).
 - Identifiers and references (`Decision.Option`, `Decision.Family.Option`), with `Name[instance]` reserved for future per-instance decisions and rejected for now.
 - Decision records: a decision may link to an ADR (MADR or EventCatalog), which is then the source of truth for its status and chosen option; a `sync` command copies them into the model and a `check` command catches drift ([ADR-0007](../../../docs/decisions/0007-decisions-are-decision-records.md)). Without a record, status and chosen option live in the model.
-- Semantic validation with errors that name the offending id: unknown references, duplicate ids, unused assumptions, cycles between consequences, negative or fractional costs and values; warnings for values off the sizing guide.
-- Ship two models: a **minimal example** (about 3 decisions, 2 rules, 1 assumption) used in the README and as the first test fixture, and the **reference model** matched to the structural profile of a real specification, used as a stress fixture.
+- Semantic validation with errors that name the offending id: unknown references, duplicate ids, cycles between consequences, negative or fractional costs and values; warnings for unused assumptions, unrated rules and values off the sizing guide.
+- Ship two models: a **minimal example** (3 decisions, 2 rules, 1 assumption) used in the README and as the first test fixture, and the **reference model** matched to the structural profile of a real specification, used as a stress fixture.
 - A command-line validator that reports every error in a model file.
 
 Out of scope: solving, compilers to solver languages (each backend brings its own in `solver-core`), UVL import, the evidence layer, per-instance decisions (only reserved here), and writing or updating decision records (process, for the skill).

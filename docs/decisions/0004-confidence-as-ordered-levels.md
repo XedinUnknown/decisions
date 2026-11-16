@@ -26,7 +26,17 @@ Rules carry a confidence. [Concept §4.4](../concept.md#44-confidence) stored it
 Chosen option: "Ordered levels, compared level first", because it matches how the levels are actually assigned and needs no probability arithmetic.
 
 * Levels, highest first: **verified**, **likely**, **plausible**, **guess**, and **unrated** (lowest).
-* Each level is published with a numeric range so that readers interpret it the same way. The ranges are settled in the `solver-core` change, following the [UK intelligence yardstick](https://www.gov.uk/government/publications/explaining-uncertainty-in-uk-intelligence-assessment/explaining-uncertainty-in-uk-intelligence-assessment) approach.
+* Each level is published with what it means, so that readers interpret it the same way (the approach of the [UK intelligence yardstick](https://www.gov.uk/government/publications/explaining-uncertainty-in-uk-intelligence-assessment/explaining-uncertainty-in-uk-intelligence-assessment)). Initial ranges, to be calibrated against how assumptions actually close:
+
+  | Level | Meaning |
+  | --- | --- |
+  | verified | Backed by a cited source or a test; treated as certain |
+  | likely | About 70–90% sure the rule holds |
+  | plausible | About 40–70% sure |
+  | guess | Below about 40%, or no basis given |
+  | unrated | Not judged yet |
+
+  The ranges explain the labels to people; the solver uses only the order.
 * A configurable threshold makes rules at or above a level hard; the default is **verified** only.
 * When an option needs soft rules to be wrong, explanations are compared like version numbers: the one whose highest blamed level is lower wins; at the same level, fewer blamed rules wins; then the next level down decides.
 

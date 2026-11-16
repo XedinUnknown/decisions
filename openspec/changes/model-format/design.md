@@ -2,14 +2,14 @@
 
 ## Context
 
-See proposal.md. Standing decisions: [ADR-0002](../../../docs/decisions/0002-own-model-format-compiled-to-solver-languages.md) (own format), [ADR-0004](../../../docs/decisions/0004-confidence-as-ordered-levels.md) (confidence levels), [ADR-0006](../../../docs/decisions/0006-relative-cost-and-value.md) (cost and value). The real pilot model stays outside this repository; only its structural profile (kept on the internal Confluence page) shapes the reference model.
+See proposal.md. Standing decisions: [ADR-0002](../../../docs/decisions/0002-own-model-format-compiled-to-solver-languages.md) (own format), [ADR-0004](../../../docs/decisions/0004-confidence-as-ordered-levels.md) (confidence levels), [ADR-0006](../../../docs/decisions/0006-relative-cost-and-value.md) (cost and value), [ADR-0007](../../../docs/decisions/0007-decisions-are-decision-records.md) (decision records). The reference model's shape follows the structural profile of a real specification; that specification and its model are kept outside this repository.
 
 ## Goals / Non-Goals
 
 **Goals:**
 - A format an AI can write and a person can review in a pull request.
 - Validation that catches drafting errors with precise locations.
-- Two bundled models that every later change tests against.
+- Two bundled models, specified completely here, that every later change tests against.
 
 **Non-Goals:**
 - Solving or compiling to solver languages.
@@ -19,39 +19,57 @@ See proposal.md. Standing decisions: [ADR-0002](../../../docs/decisions/0002-own
 
 ### 1. Shape of a model file
 
+An excerpt (other decisions omitted; the documented examples in `docs/model-format.md` must be complete and valid):
+
 ```yaml
+format: 1
 model: web-app
 scale: relative            # or: {unit: hours}
 guide: fibonacci           # optional: warn about off-guide sizes
+constants:
+  PricePerThousand: 2
+  Budget: 1000
 decisions:
   Sessions:
+    summary: Where session state lives
     options:
       Server: {cost: 3, value: 5}
       Token:  {cost: 1, value: 3}
   Hosting:
     options:
-      Containers: {options: {ManagedCluster: {cost: 8}, PaaS: {cost: 5}}}
-      Serverless: {options: {Functions: {cost: 3}, Edge: {cost: 5}}}
-hidden: [InstantRevocation]
+      Containers: {options: {ManagedCluster: {cost: 8, value: 8}, PaaS: {cost: 3, value: 5}}}
+      Serverless: {options: {Functions: {cost: 2, value: 5}, Edge: {cost: 3, value: 8}}}
+hidden:
+  InstantRevocation: {cost: 2, value: 5}
 assumptions:
-  A1: {kind: bool, text: "The platform keeps WebSocket connections open for a whole session", closes_by: "Load test"}
-  A10: {kind: int, text: "Expected monthly requests"}
+  A1:  {kind: bool, text: "The platform keeps WebSocket connections open for a whole session", closes_by: "Load test"}
+  A10: {kind: int, min: 0, max: 2000, text: "Expected monthly requests, in thousands"}
 consequences:
-  K2: {any: [{is: [Auth, External]}, {is: [Search, External]}]}
+  K2: {any: [Auth.External, Search.External, SessionStore.ExternalKV]}
 rules:
   R1:
     if: InstantRevocation
-    then: {is: [Sessions, Server]}
+    then: Sessions.Server
     level: verified
     source: OWASP JWT Cheat Sheet
     reason: A signed token stays valid until it expires, so a logout cannot revoke it instantly
-  R11: {fact: true, source: "...", reason: "Any CDN works with any host", level: verified}
+  R10:
+    if: {in: Hosting.Serverless}
+    then: {le: [{times: [A10, PricePerThousand]}, Budget]}
+    level: plausible
+    source: Platform pricing page
+    reason: Per-request billing must stay within the monthly budget
+  R14: {then: CDN.HostProvider, level: verified, retired_by: R11, source: "...", reason: "..."}
+  R11: {fact: true, level: verified, source: "...", reason: "Any CDN works with any host"}
 combinations:
-  - when: {all: [{in: [Hosting, Serverless]}, {is: [Realtime, WebSockets]}]}
-    cost: 5
+  - when: {all: [{in: Hosting.Serverless}, Database.ManagedSQL]}
+    cost: 3
 ```
 
-Option references are `Decision.Option` strings or the `is`/`in` forms; families are referenced with `in`. Ids are stable because explanations and tests cite them.
+- **Paths.** An option is always referenced by its full path, `Decision.Option` or `Decision.Family.Option`. A family path (`Hosting.Serverless`) is used only inside `in:`, meaning "one of the family's options". In requests and records, a choice names a decision and an option path within it (`Hosting: Serverless.Functions`).
+- **Atoms.** A bare option path, hidden choice, yes/no assumption or consequence id is an expression that is true or false.
+- **Numeric terms.** Integers, constants, numeric assumptions, `plus` and `times` (one factor must be a constant), compared with `lt`, `le`, `eq`, `ge`, `gt`, `ne`.
+- **Namespace.** Decisions, hidden choices, assumptions, consequences, rules and constants share one namespace; option ids are unique within their decision or family.
 
 *Alternatives:* JSON for authoring (noisier for review), TOML (awkward for nested expressions). YAML with a JSON Schema keeps editor support (completion, inline errors) through the schema.
 
@@ -83,64 +101,105 @@ x-decision:
 ...
 ```
 
-The `x-decision` field fits both MADR (frontmatter is optional metadata) and EventCatalog ADRs (custom `x-` properties are allowed), so the same convention works whether records live in `docs/decisions/` or in a catalog. Only the `sync` and `check` commands read records, and only their frontmatter; loading a model never does. `sync` rewrites the `synced` blocks in place while preserving the rest of the YAML (comments and ordering) by editing the parsed document rather than re-serialising it. A later adapter can sync from EventCatalog through its SDK (`getAdr`) instead of files.
+The `x-decision` field fits both MADR (frontmatter is optional metadata) and EventCatalog ADRs (custom `x-` properties are allowed). Only `sync` and `check` read records, and only their frontmatter; loading a model never does. `sync` edits the parsed YAML document in place, so comments and ordering survive. A later adapter can sync from EventCatalog through its SDK (`getAdr`) instead of files.
 
-### 1b. Reserved instance qualifiers
+### 1b. Retired rules
 
-`Name[instance]` is reserved for a later change in which a decision template applies once per unit (for example per service). Reserving it now keeps today's models valid once instances arrive. The validator recognises the form and rejects it with "instance qualifiers are reserved".
+A rule that turned out to be wrong is not deleted while decisions rely on it: it gets `retired_by: <fact id>` and stops constraining. A decision whose `relies-on` names a retired rule is stale; the solver reports it (solver-core). This replaces the earlier idea of a separate "justification" element: the reliance is the `relies-on` list, the justification is the rule.
+
+### 1c. Reserved instance qualifiers
+
+`Name[instance]` is reserved for a later change in which a decision template applies once per unit (for example per service). The validator recognises the form and rejects it with "instance qualifiers are reserved".
 
 ### 2. Validation in two passes
 
 1. JSON Schema (structure, types, enums), with errors mapped back to YAML line and column through the parser's source map.
-2. Semantic pass over the parsed model: reference resolution, duplicate ids, consequence cycle detection (depth-first search), integer checks on costs and values, numeric-term checks, warnings (including off-guide sizes).
+2. Semantic pass: reference resolution, namespace and duplicate checks, consequence cycle detection (depth-first search), integer checks on costs, values and bounds, numeric-term checks (a `times` needs a constant factor), retired-by references, warnings (unused assumptions, unrated rules, off-guide sizes).
 
 Both passes collect all errors before reporting.
 
 ### 3. Bundled models
 
-- `examples/minimal.yaml`: Sessions (Server, Token), Hosting (Containers, Serverless), Realtime (WebSockets, Polling); R1 instant revocation needs server-side sessions; R2 serverless with WebSockets needs A1; one hidden choice. Small enough for the README, and it contains a conflict and an assumption-dependent option.
-- `examples/reference.yaml`: a generic SaaS web-application model matched to the pilot's structural profile. A test checks it against the profile targets. Its content:
+Both are specified completely here; every scenario in later changes that names them depends on these exact contents.
 
-| Id | Options |
+#### 3.1 Minimal example (`examples/minimal.yaml`)
+
+| Decision | Options (cost/value) |
 | --- | --- |
-| Sessions | Server · Token |
-| Hosting | Containers {ManagedCluster, PaaS} · Serverless {Functions, Edge} |
-| Realtime | WebSockets · SSE · Polling |
-| Database | ManagedSQL · ServerlessSQL · DocumentStore |
-| SessionStore | Database · InMemory · ExternalKV |
-| CDN | HostProvider · Independent (justification "decided by Hosting", made stale by R11) |
-| Auth | Own · External |
-| Region | Single · Multi |
-| Logging | FullBodies · MetadataOnly |
-| Search | DatabaseFullText · External |
+| Sessions | Server (3/5) · Token (1/3) |
+| Hosting | Containers (5/5) · Serverless (2/5) |
+| Realtime | WebSockets (1/8) · Polling (2/2) |
 
-Hidden choices: `InstantRevocation`, `AuditTrail`. Consequences: K1 personal data at rest, K2 new third-party processor, K3 privacy review widens.
+Hidden choice: InstantRevocation (2/5). Assumption: A1 "the platform keeps WebSocket connections open for a whole session".
 
-| Id | Rule | Level |
+| Rule | Expression | Level |
 | --- | --- | --- |
-| R1 | InstantRevocation ⇒ Sessions = Server | verified |
-| R2 | Hosting ∈ Serverless ∧ Realtime = WebSockets ⇒ A1 | verified |
-| R3 | Hosting ∈ Serverless ∧ Sessions = Server ⇒ SessionStore ≠ InMemory | verified |
-| R4 | SessionStore = InMemory ⇒ Hosting ∈ Containers ∧ A4 | likely |
-| R5 | K1 ⇔ Logging = FullBodies ∨ AuditTrail | verified |
-| R6 | K2 ⇔ Auth = External ∨ Search = External ∨ SessionStore = ExternalKV | verified |
-| R7 | K2 ∧ Region = Single ⇒ A7 | likely |
-| R8 | K3 ⇔ K1 ∨ K2 | verified |
-| R9 | Region = Multi ⇒ A9 | plausible |
-| R10 | Hosting ∈ Serverless ⇒ A10 × unit price ≤ budget | plausible |
-| R11 | Background fact: any CDN works with any host (removes CDN's justification) | verified |
-| R12 | Hosting = Serverless.Edge ⇒ A5 | unrated |
-| R13 | Database = ServerlessSQL ∧ Hosting ∈ Containers ⇒ A2 | guess |
+| R1 | InstantRevocation ⇒ Sessions.Server | verified |
+| R2 | Hosting.Serverless ∧ Realtime.WebSockets ⇒ A1 | verified |
 
-Assumptions (14): A1 long-lived WebSockets on the platform · A2 serverless SQL connection limits suffice · A3 external KV store in region · A4 PaaS sticky sessions · A5 database driver runs at the edge · A6 CDN does not buffer SSE · A7 processors offer hosting in region · A8 identity provider supports instant revocation · A9 database cross-region replication · A10 expected monthly requests (numeric) · A11 search latency target met · A12 log pipeline can redact bodies · A13 CDN passes WebSocket upgrades · A14 team can operate a cluster. Rules for A3, A6, A8, A11–A14 are added while writing the file, so that every assumption is used; Hosting must end up depending on at least 4 (A1, A4, A5, A14), and at least 2 assumptions must affect 2 decisions each.
+Questions it answers in the README: with Sessions = Token, instant revocation is impossible (R1); with Serverless and WebSockets, the configuration depends on A1; the cheapest configuration (Token, Serverless, WebSockets: 4 points) relies on A1.
 
-Costs and values are sized with the Fibonacci guide, chosen so that the cheapest options conflict through at least one hard rule and the cheapest and most valuable configurations differ. At least one combination term (serverless with WebSockets) changes a total.
+#### 3.2 Reference model (`examples/reference.yaml`)
 
-### 4. Process rule: every iteration passes on the reference model
+A generic SaaS web application matched to the profile of a real specification.
 
-From this change onwards, CI runs the full suite against both bundled models on every push, so no change can pass on the minimal example alone (recorded in CONTRIBUTORS.md).
+| Decision | Options (cost/value) |
+| --- | --- |
+| Sessions | Server (3/5) · Token (1/3) |
+| Hosting | Containers { ManagedCluster (8/8) · PaaS (3/5) } · Serverless { Functions (2/5) · Edge (3/8) } |
+| Realtime | WebSockets (1/8) · SSE (2/5) · Polling (2/2) |
+| Database | ManagedSQL (3/5) · ServerlessSQL (1/3) · DocumentStore (2/3) |
+| SessionStore | Database (1/2) · InMemory (2/3) · ExternalKV (2/5) |
+| CDN | HostProvider (1/2) · Independent (3/5); declared `status: accepted`, `chosen: HostProvider`, `relies-on: [R14]` |
+| Auth | Own (5/3) · External (2/5) |
+| Region | Single (1/2) · Multi (8/8) |
+| Logging | FullBodies (1/5) · MetadataOnly (2/3) |
+| Search | DatabaseFullText (1/2) · External (3/8) |
+
+Hidden choices: InstantRevocation (2/5), AuditTrail (3/5). Constants: PricePerThousand = 2, Budget = 1000. Combination term: Hosting.Serverless ∧ Database.ManagedSQL costs 3 more (connection pooling).
+
+Consequences (definitions, not rules):
+
+| Id | Meaning | Definition |
+| --- | --- | --- |
+| K1 | Personal data at rest | Logging.FullBodies ∨ AuditTrail |
+| K2 | New third-party processor | Auth.External ∨ Search.External ∨ SessionStore.ExternalKV |
+| K3 | Privacy review widens | K1 ∨ K2 |
+| K4 | Cross-border transfer | K2 ∧ Region.Multi |
+| K5 | Legal sign-off needed | K3 ∧ K4 |
+
+Rules:
+
+| Id | Expression | Level |
+| --- | --- | --- |
+| R1 | InstantRevocation ⇒ Sessions.Server | verified |
+| R2 | Hosting.Serverless ∧ Realtime.WebSockets ⇒ A1 | verified |
+| R3 | Hosting.Serverless ∧ Sessions.Server ⇒ ¬SessionStore.InMemory | verified |
+| R4 | SessionStore.InMemory ⇒ Hosting.Containers ∧ A4 | likely |
+| R7 | K2 ∧ Region.Single ⇒ A7 | likely |
+| R9 | Region.Multi ⇒ A9 | plausible |
+| R10 | Hosting.Serverless ⇒ A10 × PricePerThousand ≤ Budget | plausible |
+| R11 | Fact: any CDN works with any host | verified |
+| R12 | Hosting.Serverless.Edge ⇒ A5 | verified |
+| R13 | Database.ServerlessSQL ∧ Hosting.Containers ⇒ A2 | guess |
+| R14 | CDN.HostProvider (always), retired by R11 | verified |
+| R15 | SessionStore.ExternalKV ⇒ A3 | likely |
+| R16 | Realtime.SSE ⇒ A6 | plausible |
+| R17 | InstantRevocation ∧ Auth.External ⇒ A8 | unrated |
+| R18 | Search.External ⇒ A11 | likely |
+| R19 | Logging.FullBodies ⇒ A12 | plausible |
+| R20 | Realtime.WebSockets ∧ CDN.HostProvider ⇒ A13 | likely |
+| R21 | Hosting.Containers.ManagedCluster ⇒ A14 | guess |
+
+Assumptions: A1 long-lived WebSockets on the platform · A2 serverless SQL connection limits suffice · A3 external KV store available in region · A4 PaaS sticky sessions · A5 database driver runs at the edge · A6 CDN does not buffer SSE · A7 processors offer hosting in region · A8 identity provider supports instant revocation · A9 database cross-region replication · A10 expected monthly requests in thousands (numeric, 0–2000) · A11 search latency target met · A12 log pipeline can redact bodies · A13 CDN passes WebSocket upgrades · A14 team can operate a cluster.
+
+How it meets the profile: 10 decisions, one with option families; 16 constraining rules at every level; 14 assumptions, each used; Hosting depends on A1, A2, A4, A5, A10 and A14; A1, A2, A8 and A13 each affect two decisions or choices; the chain Auth.External → K2 → K4 → K5 has four steps, and K3 and K4 converge in K5; R10 is numeric; R11 retires R14, on which the accepted CDN decision relies; the cheapest configuration (Token, Serverless.Functions, WebSockets, ServerlessSQL, SessionStore.Database, HostProvider, External auth, Single region, FullBodies, DatabaseFullText: 12 points) relies on A1.
+
+### 4. Process rule: every iteration passes on both bundled models
+
+From this change onwards, CI runs the full suite against both bundled models on every push. Scenarios that need a construct neither bundled model has (for example three `plausible` rules competing with one `likely` rule) use small fixtures in addition, never instead.
 
 ## Risks / Trade-offs
 
-- [The format turns out to miss something the solver needs] → `solver-core` may extend it; the schema is versioned by a `format` field from the first release.
+- [The format turns out to miss something the solver needs] → `solver-core` may extend it through a modified `model/format` capability; the `format` field versions the file.
 - [YAML ambiguities, for example `no` read as false] → The parser runs in YAML 1.2 core schema mode, where `no` is a string.

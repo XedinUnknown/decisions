@@ -26,12 +26,12 @@ A decision model (decisions, options, rules, assumptions, consequences, costs) h
 
 Chosen option: "Own intermediate representation", because it is the only option that serves several backends from one source, and it lets models be validated before solving. This reverses the concept's rejection of a custom format: portability now comes from compiling to standard languages, not from authoring in one.
 
-The IR has the element kinds of the concept (decisions with options, hidden yes/no choices, rules, assumptions, consequences, costs and values) and a small expression language for rules: `is`, `in`, `all`, `any`, `not`, `if`/`then` and integer comparisons. Every candidate backend expresses each of these directly.
+The IR has the element kinds of the concept (decisions with options, hidden yes/no choices, rules, assumptions, consequences, costs and values) and a small expression language for rules: atoms (option paths, hidden choices, yes/no assumptions, consequences), `in` over option families, `all`, `any`, `not`, `if`/`then`, and integer comparisons over linear terms with named constants. The `model-format` change defines it precisely. Every candidate backend expresses each of these directly.
 
 ### Consequences
 
 * Good, because one model serves every backend and the brute-force test oracle.
-* Good, because a JSON Schema plus semantic checks (unknown ids, unused assumptions, consequence cycles) catch AI drafting errors before solving.
+* Good, because a JSON Schema plus semantic checks (unknown ids and consequence cycles as errors; unused assumptions and unrated rules as warnings) catch AI drafting errors before solving.
 * Good, because UVL remains possible as an importer into the IR.
 * Bad, because the format is not a standard; its documentation and schema are this project's responsibility.
 * Bad, because each backend needs a compiler (expected to be a few hundred lines each).

@@ -13,15 +13,16 @@ Every later stage of the product (configurator UI, export, write-up, EventCatalo
 - Report consequences, totals, ranges, cheapest and most valuable configurations, the cost/value Pareto front, and value per cost for ranking options ([ADR-0006](../../../docs/decisions/0006-relative-cost-and-value.md)).
 - Make solving tools modules that declare the query kinds they answer ([ADR-0005](../../../docs/decisions/0005-solving-tools-as-modules.md)).
 - Build two backends, clingo first and MiniZinc second ([ADR-0003](../../../docs/decisions/0003-clingo-first-minizinc-second.md)), each with a compiler from the model format, plus a brute-force backend as test oracle.
-- Measure in a browser and inside a claude.ai artifact, and record the results in ADR-0003.
+- Measure in a browser and inside a claude.ai artifact, and record the results in a new ADR that confirms or supersedes ADR-0003.
+- Report accepted decisions that no longer hold: stale (relying on a retired rule) or in conflict with the current choices.
 
-Out of scope: the configurator UI and its list orderings, JSON export, LLM write-up, evidence layer, stale-justification detection, MCP routes (Q9), further query kinds (what-if, which open question to answer first), UVL import.
+Out of scope: the configurator UI and its list orderings, JSON export, LLM write-up, evidence layer, MCP routes (Q9), further query kinds (goals on consequences, what-if, which open question to answer first), UVL import, per-instance decisions.
 
 ## Capabilities
 
 ### New Capabilities
 
-- `solving/feasibility`: Feasible, infeasible and forced options, including feasibility that holds only under a particular assumption value.
+- `solving/feasibility`: Feasible, infeasible and forced options and families, the conditions on open questions they depend on, and accepted decisions that no longer hold.
 - `solving/conflict-explanation`: A minimal set of rules, choices and assumption values behind an infeasible option or an inconsistent configuration.
 - `solving/diagnosis`: The smallest sets of choices to change so that a wanted option becomes feasible or an inconsistent configuration becomes consistent.
 - `solving/soft-rules`: Rules below a confidence threshold do not remove options; doubtful rules are blamed level first.

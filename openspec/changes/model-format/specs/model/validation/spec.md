@@ -28,7 +28,7 @@ Validation SHALL reject a model that does not match the JSON Schema.
 - **THEN** validation fails with an error naming the decision
 
 ### Requirement: Semantic checks
-Validation SHALL reject unknown references, duplicate ids, cycles between consequences, negative or fractional costs and values, and comparisons between non-numeric terms.
+Validation SHALL reject unknown references, duplicate ids and namespace clashes, cycles between consequences, negative or fractional costs and values, numeric assumptions without bounds, comparisons between non-numeric terms, and `times` without a constant factor.
 
 #### Scenario: Consequence cycle
 - **WHEN** K1 is defined using K2 and K2 using K1
