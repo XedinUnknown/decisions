@@ -32,6 +32,17 @@ For every option the caller has not chosen, the solver SHALL report whether the 
 - **WHEN** feasibility is computed for any reachable set of choices on the reference model
 - **THEN** each option's result equals the result of exhaustively enumerating all assignments of the model
 
+### Requirement: Forced options
+The solver SHALL report as forced every unchosen option that holds in all feasible completions of the current choices and known assumption values.
+
+#### Scenario: Option forced by a rule
+- **WHEN** the choices are `{InstantRevocation: true}`
+- **THEN** `Sessions = Server` is reported forced
+
+#### Scenario: Nothing forced
+- **WHEN** no choices are made and every decision has at least two options that appear in some feasible completion
+- **THEN** no option is reported forced
+
 ### Requirement: Nested options
 The solver SHALL treat an option family (for example "serverless" with "functions" and "edge") as feasible when at least one of its members is feasible, and SHALL report each member separately.
 
