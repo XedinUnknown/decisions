@@ -35,5 +35,5 @@ A consequence defined by other consequences SHALL be reported true when any defi
 When a rule that depends on a consequence takes part in a conflict, the explanation SHALL include the rule that defines the consequence and the choices that made it true.
 
 #### Scenario: Chain shown in full
-- **WHEN** `Search = External` is infeasible because of R7 with `Region = Single` and `A7 = false`
+- **WHEN** the threshold is `likely` and `Search = External` is infeasible because of R7 with `Region = Single` and `A7 = false`
 - **THEN** the explanation includes R6, which makes K2 true, as well as R7

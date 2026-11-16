@@ -14,14 +14,14 @@ For every option reported infeasible, the solver SHALL return an explanation: th
 - **THEN** its explanation contains rule R1 and the choice `Sessions = Token`
 
 #### Scenario: Explanation through a consequence chain
-- **WHEN** the choices are `{Region: Single}` with A7 false, and `Search = External` is reported infeasible
+- **WHEN** the threshold is `likely`, the choices are `{Region: Single}` with A7 false, and `Search = External` is reported infeasible
 - **THEN** its explanation contains rules R6 and R7, the choice `Region = Single` and the assumption value `A7 = false`
 
 ### Requirement: Explanation of an inconsistent configuration
 For an inconsistent configuration, the solver SHALL return an explanation of the same form for the conflict among the current choices and known assumption values.
 
 #### Scenario: Conflict after an assumption closes
-- **WHEN** the choices are `{Hosting: Serverless/Functions, Realtime: WebSockets}` and A1 is set to false
+- **WHEN** the choices are `{Hosting: Serverless.Functions, Realtime: WebSockets}` and A1 is set to false
 - **THEN** the explanation contains rule R2, both choices and `A1 = false`
 
 ### Requirement: Minimality

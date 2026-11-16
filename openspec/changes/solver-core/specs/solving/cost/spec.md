@@ -2,30 +2,19 @@
 
 ## Purpose
 
-Puts numbers on a configuration: what the chosen options cost and are worth, the range still possible, the cheapest and the most valuable completions, and the return on investment.
+Puts numbers on a configuration: what the chosen options cost and are worth, the range still possible, the best configurations, and which options give the most value per cost (ADR-0006).
 
 ## ADDED Requirements
 
-### Requirement: Cost and value attributes
-A model SHALL be able to give each option an integer cost and an integer value. An option without a cost or value SHALL count as 0 for that attribute.
-
-#### Scenario: Missing attribute counts as zero
-- **WHEN** an option has a cost but no value
-- **THEN** totals treat its value as 0
-
-#### Scenario: Non-integer attribute rejected
-- **WHEN** a model gives an option a cost of 2.5
-- **THEN** the model is rejected with an error naming the option and the attribute
-
 ### Requirement: Running total
-For any set of choices, the solver SHALL report the total cost and total value of the chosen options.
+For any set of choices, the solver SHALL report the total cost and total value of the chosen options plus every combination term whose condition holds.
 
-#### Scenario: Total of chosen options
-- **WHEN** the choices are `{Sessions: Server, Hosting: Serverless/Functions}` in the reference model
-- **THEN** the total cost equals the sum of those two options' costs
+#### Scenario: Combination term counted
+- **WHEN** the choices are `{Hosting: Serverless.Functions, Realtime: WebSockets}` and the model has a combination term for that pair with cost 5
+- **THEN** the total cost includes the two options' costs plus 5
 
-### Requirement: Range over feasible completions
-The solver SHALL report the minimum and maximum total cost, and the minimum and maximum total value, over all feasible completions of the current choices.
+### Requirement: Range over feasible configurations
+The solver SHALL report the minimum and maximum total cost and total value over all feasible completions of the current choices.
 
 #### Scenario: Range narrows as choices are made
 - **WHEN** a choice is added that removes the most expensive feasible completion
@@ -33,36 +22,33 @@ The solver SHALL report the minimum and maximum total cost, and the minimum and 
 
 #### Scenario: Agreement with exhaustive enumeration
 - **WHEN** a range is computed for any reachable set of choices on the reference model
-- **THEN** it equals the range found by exhaustively enumerating feasible completions
+- **THEN** it equals the range found by enumerating every feasible completion
 
-### Requirement: Cheapest completion
-The solver SHALL return a feasible completion of the current choices with the lowest total cost, and its total.
+### Requirement: Cheapest and most valuable configurations
+The solver SHALL return a feasible completion with the lowest total cost, and, given a cost budget, a feasible completion with the highest total value within it, or report that none fits.
 
-#### Scenario: Cheapest completion respects rules
+#### Scenario: Cheapest respects rules
 - **WHEN** the cheapest options would violate a hard rule together
 - **THEN** the returned completion satisfies all hard rules and no feasible completion costs less
-
-### Requirement: Most valuable completion within a budget
-Given a cost budget, the solver SHALL return a feasible completion with the highest total value whose total cost does not exceed the budget, or report that none exists.
 
 #### Scenario: Budget too small
 - **WHEN** the budget is below the minimum total cost
 - **THEN** the solver reports that no completion fits the budget
 
-### Requirement: Return on investment
-For any complete or partial configuration, the solver SHALL report return on investment as total value divided by total cost, and SHALL report it as undefined when the total cost is 0.
+### Requirement: Pareto front
+The solver SHALL return the feasible completions for which no other feasible completion is both cheaper or equal in cost and more or equally valuable with at least one strictly better.
+
+#### Scenario: Dominated configuration excluded
+- **WHEN** configuration X costs 8 with value 13 and configuration Y costs 5 with value 13
+- **THEN** X is not on the front
+
+### Requirement: Value per cost for options
+For every feasible unchosen option, the solver SHALL report its value per cost, its cost delta (the change in the cheapest completion's total if it were chosen), and its value delta likewise. Options with cost 0 SHALL be reported without a ratio.
 
 #### Scenario: Ratio reported
-- **WHEN** a configuration has total value 30 and total cost 12
-- **THEN** its return on investment is reported as 2.5
+- **WHEN** an option has value 13 and cost 5
+- **THEN** its value per cost is reported as 2.6
 
 #### Scenario: Zero cost
-- **WHEN** a configuration has total cost 0
-- **THEN** its return on investment is reported as undefined
-
-### Requirement: Per-option cost delta
-For every feasible unchosen option, the solver SHALL report the change in the cheapest completion's total cost if that option were chosen.
-
-#### Scenario: Delta of a more expensive option
-- **WHEN** choosing option X forces a completion that costs 5 more than the current cheapest completion
-- **THEN** X's cost delta is reported as +5
+- **WHEN** an option has cost 0
+- **THEN** no ratio is reported for it, and its value is

@@ -1,6 +1,7 @@
 # Decision Modelling: Concept
 
 **Status:** Draft, exploration. No decisions recorded here.
+**Decided since this draft:** see [decisions/](decisions/). Accepted ADRs override this document where they disagree (for example, the model format in ADR-0002 and confidence levels in ADR-0004).
 **Tags:** `[V]` verified with a linked source · `[U]` unverified · `[?]` unknown. Nothing tagged `[U]` or `[?]` should be built on before it is closed.
 
 ---

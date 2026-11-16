@@ -33,7 +33,11 @@ Work goes from spec to tests to implementation, in that order:
 
 A change's `tasks.md` lists test tasks before the implementation tasks they cover.
 
-Tests of solving behaviour run against a reference model whose size and structure are comparable to a real-world specification, not only against toy models.
+Tests of solving behaviour run against two bundled models: a minimal example, also used in the README, and a reference model whose size and structure are comparable to a real-world specification. Every iteration passes the full suite against both; CI enforces this on every push.
+
+### Decision records
+
+A change that makes a decision spanning more than itself (a format, a library, a semantics) records it as an ADR in [`docs/decisions/`](docs/decisions/), copying [the template](docs/decisions/adr-template.md) with the next free number, and links it from the change's `design.md`. See [ADR-0001](docs/decisions/0001-record-decisions-with-madr.md).
 
 ## Branches
 

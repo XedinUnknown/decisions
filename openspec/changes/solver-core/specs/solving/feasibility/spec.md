@@ -76,22 +76,22 @@ The solver SHALL toggle only the unknown assumptions that can affect an option, 
 When the current choices and known assumption values already violate a hard rule, the solver SHALL report the configuration as inconsistent instead of a feasibility list.
 
 #### Scenario: Assumption closes against a choice
-- **WHEN** the choices are `{Hosting: Serverless/Functions, Realtime: WebSockets}` and A1 is set to false
+- **WHEN** the choices are `{Hosting: Serverless.Functions, Realtime: WebSockets}` and A1 is set to false
 - **THEN** the configuration is reported inconsistent
 
 ### Requirement: Numeric rules
 The solver SHALL evaluate rules that compare numeric expressions over numeric assumption values and option attributes.
 
 #### Scenario: Cost exceeds budget
-- **WHEN** `Hosting = serverless` is chosen and the expected traffic (A10) times the unit price exceeds the budget
+- **WHEN** the threshold is `plausible`, `Hosting = serverless` is chosen and the expected traffic (A10) times the unit price exceeds the budget
 - **THEN** the configuration is reported inconsistent
 
 #### Scenario: Cost within budget
-- **WHEN** the same choice is made with a traffic value that keeps the cost within the budget
+- **WHEN** the threshold is `plausible` and the same choice is made with a traffic value that keeps the cost within the budget
 - **THEN** the configuration is consistent
 
 #### Scenario: Numeric assumption unknown
-- **WHEN** `Hosting = serverless` is unchosen and A10 has no value
+- **WHEN** the threshold is `plausible`, `Hosting = serverless` is unchosen and A10 has no value
 - **THEN** the cost rule does not rule the option out, and A10 is listed as an assumption the option's feasibility depends on
 
 ### Requirement: Response time

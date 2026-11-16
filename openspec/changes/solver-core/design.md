@@ -2,152 +2,104 @@
 
 ## Context
 
-There is no code yet. The concept ([docs/concept.md](../../../docs/concept.md)) compares two authoring routes, MiniZinc and UVL with Z3, and leans towards MiniZinc without evidence; this change adds Answer Set Programming (clingo) as a third. Development is test-first ([CONTRIBUTORS.md](../../../CONTRIBUTORS.md)), and tests of solving must run against a model comparable to a real-world specification. The real pilot stays outside the repository; only its structural profile is used here.
+See proposal.md. Models come in the format defined by the `model-format` change, which also ships the minimal example and the reference model. Standing decisions: [ADR-0003](../../../docs/decisions/0003-clingo-first-minizinc-second.md) (clingo first, MiniZinc second), [ADR-0004](../../../docs/decisions/0004-confidence-as-ordered-levels.md) (confidence levels), [ADR-0005](../../../docs/decisions/0005-solving-tools-as-modules.md) (modules), [ADR-0006](../../../docs/decisions/0006-relative-cost-and-value.md) (cost and value). Development is test-first ([CONTRIBUTORS.md](../../../CONTRIBUTORS.md)).
 
 ## Goals / Non-Goals
 
 **Goals:**
-- One conformance suite, written before any backend, that every backend must pass.
-- Ground truth for that suite computed mechanically, not by hand.
-- A recorded, evidence-based answer to Q6, Q7 and the browser part of Q3.
+- One conformance suite, written before any real backend, that every backend passes for the query kinds it declares.
+- Ground truth computed mechanically by a brute-force oracle.
+- Measurements that confirm or revise ADR-0003.
 
 **Non-Goals:**
-- A stable public API or file format for models. The model file format is the next change; here the two language files are fixtures.
-- Production-quality UVL support. The UVL backend only has to be good enough to compare.
+- A stable public API. The engine's API settles when the configurator UI uses it.
 
 ## Decisions
 
-### 1. Modules and composition
+### 1. Modules and routing
 
-The engine is a host; backends and query handlers are modules. Following config-based modularity, a module is only its provider: keyed definitions and extensions, with no lifecycle of its own. The host chooses the module set and order and composes one immutable registry.
+Per ADR-0005: backends and query handlers are modules contributing to one composed registry.
 
 | Key | Definition | Extended by |
 | --- | --- | --- |
-| `solver/backends` | list service, empty | each backend module appends its backend |
+| `solver/backends` | list, empty | each backend module appends its backend |
 | `solver/backend-preference` | list of backend ids, host-owned | host overrides per environment |
-| `solver/queries` | map from query kind to handler | query modules add handlers (feasibility, forced, explanation, soft rules, consequences, cost) |
-| `solver/router` | picks, per query kind, the first preferred backend that declares that kind | — |
+| `solver/queries` | map from query kind to handler | query modules add handlers |
+| `solver/router` | first preferred backend that declares the kind | — |
 
-A backend module defines `solver/backend/<id>` (for example `minizinc`, `z3-uvl`, `clingo`, `brute-force`) with its declared query kinds, and extends `solver/backends` with it. A test composes the brute-force module only; production composes the winning backend. New tools later (a Prolog or Datalog backend, an MCP-backed explainer) are further modules; new questions (minimal undo, what-if) are further query handlers. Neither changes the engine.
+The registry is the minimal version of config-based modularity: keyed definitions, extensions, override order, one immutable composed registry. Nothing more until a third tool arrives.
 
-*Alternative:* a plugin registry that backends call into at start-up. Rejected: registration as a side effect hides load order and makes test composition harder than appending a module to the set.
-
-### 1a. Backend interface and query kinds
-
-Every backend implements a subset of these query kinds and declares which:
+### 2. Backend interface and query kinds
 
 ```
-load(model)                                          -> handle
-check(handle, choices, assumptions, ruleIds)         -> sat | unsat                     kind: check
-optimise(handle, choices, assumptions, objective)    -> assignment + objective value     kind: optimise
-consequences(handle, choices, assumptions)           -> id -> true | false | undetermined kind: consequences
-possible(handle, choices, assumptions)               -> options true in some completion  kind: enumerate-brave
-forced(handle, choices, assumptions)                 -> options true in all completions  kind: enumerate-cautious
+load(model)                                           -> handle
+check(handle, choices, assumptions, ruleIds)          -> sat | unsat           kind: check
+optimise(handle, choices, assumptions, objectives[])  -> assignment + values   kind: optimise
+consequences(handle, choices, assumptions)            -> id -> true|false|undetermined   kind: consequences
+possible(handle, choices, assumptions)                -> options true in some completion  kind: possible
+forced(handle, choices, assumptions)                  -> options true in all completions  kind: forced
 ```
 
-`check` takes an explicit subset of rule ids, which is all QuickXplain needs. Consequence and group-structure rules are always included; only rule-table rules are subject to subsetting. `objective` is one of: minimise weight of violated soft rules, minimise total cost, maximise total value under a cost bound.
+`check` takes an explicit subset of constraining rule ids; choice-structure and consequence definitions are always included. `objectives` is a list in priority order (for soft rules by level, then cost or value). Handlers fall back on repeated `check` where a backend lacks `possible`, `forced` or `consequences`; only `optimise` has no fallback, and the router rejects it when no loaded backend declares it.
 
-Query handlers fall back on `check` when a backend lacks a richer kind: forced and possible options can be computed with one `check` per option; ranges with repeated bounded `check`. A backend with only `check` is therefore enough for everything except optimisation, which is the case `solving/backends` rejects explicitly.
+clingo declares all kinds (`possible` and `forced` through brave and cautious reasoning, `optimise` through weak constraints with priorities). MiniZinc declares `check`, `optimise` and `consequences`.
 
-*Alternative:* let each backend produce its own cores (Z3 unsat cores, FindMUS). Rejected as the primary path: it ties explanations to one backend and, for MiniZinc in the browser, depends on whether the WebAssembly build includes FindMUS `[?]`. Native cores may still be used as a seed to speed QuickXplain up.
+### 3. Compilers from the model format
 
-### 2. QuickXplain over the interface
+Each backend compiles the model once per load:
 
-Explanations come from QuickXplain run over `check`, with choices and known assumption values treated as removable constraints alongside rules. This closes Q7 in favour of the in-browser loop unless it misses the response-time requirement.
-
-### 3. Assumptions as per-run constraints
-
-An unknown assumption is never left free. For each option, the shared layer first checks with all unknown assumptions free to find whether the option can be feasible at all, then toggles only the assumptions that appear in the rules reachable from that option (spec: limit on assumption combinations).
-
-A numeric assumption cannot be toggled. While it has no value, rules that reference it are left out of the check, and every option those rules touch lists the assumption as a dependency.
-
-### 3a. Cost, value and return on investment
-
-Costs and values are integers on options, like story points. Totals are linear sums, so every candidate optimises them directly: MiniZinc with `minimize`/`maximize`, Z3 with its optimiser, clingo with `#minimize`/`#maximize` and priorities. Currency fits by using whole minor units (cents); clingo's 32-bit integers cover totals up to about 21 million in major units.
-
-Return on investment (value ÷ cost) is not linear, so it is reported, not optimised: it is computed from the totals after solving. Optimisation targets are cheapest completion and most value within a budget, both linear. If "best ratio" is needed later, it can be added as a query handler that iterates the linear problem (Dinkelbach's method), without changing any backend.
-
-Per-option cost deltas and the impact counts a UI may sort by (for example, how many options an open question affects) are numbers the engine reports; ordering them into lists is a UI concern.
-
-### 4. Reference model
-
-A generic SaaS web-application model, matched to the pilot's structural profile (kept on the internal Confluence page, §11). Ids are stable because tests cite them.
-
-**Decisions (10):**
-
-| Id | Options |
-| --- | --- |
-| Sessions | Server · Token |
-| Hosting | Containers {ManagedCluster, PaaS} · Serverless {Functions, Edge} |
-| Realtime | WebSockets · SSE · Polling |
-| Database | ManagedSQL · ServerlessSQL · DocumentStore |
-| SessionStore | Database · InMemory · ExternalKV |
-| CDN | HostProvider · Independent (justification "decided by Hosting", made stale by R11) |
-| Auth | Own · External |
-| Region | Single · Multi |
-| Logging | FullBodies · MetadataOnly |
-| Search | DatabaseFullText · External |
-
-**Hidden choices (2):** `InstantRevocation`, `AuditTrail`.
-
-**Consequences (3):** K1 personal data at rest · K2 new third-party processor · K3 privacy review widens.
-
-**Rules:**
-
-| Id | Rule | Confidence |
+| Model element | clingo | MiniZinc |
 | --- | --- | --- |
-| R1 | InstantRevocation ⇒ Sessions = Server | 255 |
-| R2 | Hosting ∈ Serverless ∧ Realtime = WebSockets ⇒ A1 | 255 |
-| R3 | Hosting ∈ Serverless ∧ Sessions = Server ⇒ SessionStore ≠ InMemory | 255 |
-| R4 | SessionStore = InMemory ⇒ Hosting ∈ Containers ∧ A4 | 180 |
-| R5 | K1 ⇔ Logging = FullBodies ∨ AuditTrail | 255 |
-| R6 | K2 ⇔ Auth = External ∨ Search = External ∨ SessionStore = ExternalKV | 255 |
-| R7 | K2 ∧ Region = Single ⇒ A7 | 180 |
-| R8 | K3 ⇔ K1 ∨ K2 | 255 |
-| R9 | Region = Multi ⇒ A9 | 100 |
-| R10 | Hosting ∈ Serverless ⇒ A10 × unitPrice ≤ budget | 100 |
-| R12 | Hosting = Serverless/Edge ⇒ A5 | unrated |
-| R13 | Database = ServerlessSQL ∧ Hosting ∈ Containers ⇒ A2 | 25 |
-| R11 | Background fact: any CDN works with any host (no constraint; removes CDN's justification) | 255 |
+| Decision with options | `1 { choose(D,O) : option(D,O) } 1 :- decision(D).` with families as `in(D,F,O)` facts | enum per decision |
+| Constraining rule | integrity constraint guarded by `active(R)`, so `check` can switch rules off | `constraint :: "R"` guarded by a Boolean parameter per rule |
+| Assumption (yes/no) | atom fixed per run by a fact | `bool` parameter per run |
+| Numeric assumption | integer constant per run | `int` parameter |
+| Consequence | rules deriving `k(K)` | `var bool` defined by its expression |
+| Cost, value, combination terms | `#sum` aggregates | `sum(...)` |
+| Soft rule | weak constraint `:~ violated(R), level(R,L). [1@P,R]` where `P` grows with the level | lexicographic objective (see §5) |
 
-R11 is deliberately not a constraint: it tests that background facts do not affect solving.
+Choices and assumption values are passed as facts per call. The Siemens API passes them as external atoms so the program is not re-grounded ([Comploi-Taupe et al. 2023](https://www.cs.uni-potsdam.de/wv/publications/DBLP_conf/confws/Comploi-TaupeFH23.pdf)); `clingo-wasm` wraps the command-line tool and offers no such API, so every call re-grounds. Task 5.1 measures whether that fits the response-time requirement before the remaining handlers are built.
 
-**Assumptions (14):** A1 long-lived WebSockets on the platform · A2 serverless SQL connection limits suffice · A3 external KV store in region · A4 PaaS sticky sessions · A5 database driver runs at the edge · A6 CDN does not buffer SSE · A7 processors offer hosting in region · A8 identity provider supports instant revocation · A9 database cross-region replication · A10 expected monthly requests (numeric) · A11 search latency target met · A12 log pipeline can redact bodies · A13 CDN passes WebSocket upgrades · A14 team can operate a cluster.
+### 4. Explanations and repairs
 
-Some of these are referenced only by rules added while writing the conformance suite (for example A3, A6, A8, A11–A14); each must end up in at least one rule, so that the model has no dead assumptions. The profile targets are: one decision depending on 4 assumptions (Hosting: A1, A4, A5, A14), and at least 2 assumptions feeding 2 decisions each.
+- **Conflicts:** QuickXplain over `check`, treating rules, choices and known assumption values as removable. About 40 lines, backend-neutral. FindMUS is not in MiniZinc's WebAssembly build, and clingo's explanation tools are Python only, so owning this loop is the browser-compatible choice.
+- **Repairs:** FastDiag over `check`, with only choices and assumption values removable (spec: repairs never touch rules). Further repairs are found by blocking each found set and repeating, smallest first.
+- **Readable chains** (Kepler's approach, [Sahu et al. 2026](https://arxiv.org/abs/2604.25506)): before QuickXplain, rules whose expression is a conjunction are split into parts with sub-ids (`R2.1`, `R2.2`), so explanations point at the exact part responsible.
 
-**Costs and values:** every option gets an integer cost from 1 to 13 (story-point scale) and a value from 0 to 10, chosen so that the cheapest options conflict through at least one hard rule, and the cheapest and the most valuable completions differ.
+### 5. Soft rules by level
 
-The model is written three times, as `reference.mzn`, `reference.uvl` and `reference.lp` (clingo), plus a language-neutral `reference.json` that the brute-force solver reads. A parity test checks that all three produce the same feasibility on a sample of configurations.
+Levels map to priorities (verified highest, unrated lowest). clingo's weak-constraint priorities compare level first natively. MiniZinc has no priorities; the objective is a single weighted sum with base `B` greater than the number of rules: a violated rule at level index `n` weighs `Bⁿ`, which reproduces level-first comparison exactly.
 
-### 5. Brute-force reference solver
+### 6. Assumptions per value
 
-A test-only evaluator that enumerates every assignment of decisions, hidden choices and Boolean assumptions (about 4·4·3·3·3·2·2·2·2·2 option combinations × 2² hidden × 2¹³ assumptions ≈ 2.5 × 10⁸ worst case) is too slow if done naively. It therefore enumerates only the variables not fixed by the test's choices and known assumptions, and treats A10 by checking the numeric rule directly. Each conformance test compares backend output with it: feasibility exactly, explanations by minimality and unsatisfiability rather than by equality (several minimal explanations can exist).
+An unknown yes/no assumption is never left free. For each option, the handler first checks with unknown assumptions unconstrained, then toggles only assumptions in rules reachable from that option. A numeric assumption without a value leaves its rules out and is listed as a dependency.
 
-*Alternative:* hand-written expected values only. Rejected: error-prone at this size. Named scenarios from the specs are still written by hand, and must agree with the reference solver.
+### 7. Cost and value
 
-### 6. Package and runtime
+Totals, ranges, cheapest and most valuable configurations are linear and use `optimise`. The Pareto front is computed by the ε-constraint method: minimise cost, record, require value strictly greater, repeat until infeasible. On models of this size the front has few points. Value per cost and deltas are computed from optimisation results for each feasible option.
 
-TypeScript, tested with Vitest in Node, plus a browser run of the same suite (Vitest browser mode or Playwright) to measure the response-time requirement and to settle Q3. The browser run uses a plain static page; a claude.ai artifact is tried once and recorded, not required.
+### 8. Brute-force oracle
 
-### 7. Third candidate: Answer Set Programming (clingo)
+The reference model has 6,912 option combinations × 4 hidden-choice combinations = 27,648 combinations of choices, and 2¹³ assignments of yes/no assumptions. A generic evaluator sweeps about 7.7 million assignments per second in Node, so a full naive sweep takes about 29 s.
 
-clingo is a Prolog-like answer set solver from the Potassco group, built for configuration and search. Its brave and cautious reasoning modes answer "what is still possible" and "what is forced" in one call each, and it optimises with `#minimize`/`#maximize`. Checked on 2026-11-16 with `clingo-wasm` 0.6.0 in Node on a two-decision toy model with costs and an R1-shaped rule: brave mode excluded the ruled-out option, cautious mode returned the forced option, and `#minimize` returned the cheapest total with `OPTIMUM FOUND` `[V]`. Rules are plain facts and clauses, so the model itself can be queried (for example, which rules mention a decision).
+Instead, the oracle enumerates the 27,648 choice combinations once per model and threshold, and for each records the set of assumption assignments under which it satisfies the hard rules, as a bitset of 8,192 bits. Possible options, forced options, per-assumption verdicts, consequences and cost ranges are then unions and intersections over cached bitsets, so the whole conformance suite needs only one sweep per model and threshold. Minimality of explanations and repairs is checked with the same table.
 
-Open for the spike: rule identity for explanations (rules as named, switchable clauses), soft rules via weak constraints, numeric assumptions within integer domains, and its browser behaviour.
+The oracle is itself a backend module declaring every query kind, so the shared handlers are developed against it before any real backend exists.
 
-### 8. Choosing the backend
+### 9. Runtime and deployment
 
-A backend that passes the suite is a candidate. Among candidates, the decision weighs, in order: browser viability without cross-origin isolation, propagation time, bundle size, coverage of query kinds without fallbacks, then readability of the model file. The result and the measurements are recorded here before the losing backends are removed. More than one backend may stay if each covers query kinds the other lacks; the module mechanism allows that.
+- TypeScript, Vitest in Node, plus a browser run of the same suite from a static page.
+- WebAssembly files ship with the application. A claude.ai artifact cannot fetch them from a CDN, and is not cross-origin isolated (ADR-0003, probe results).
+- MiniZinc's `minizinc.wasm` (18.9 MB) is over the 15 MB limit for a single file published with an artifact. MiniZinc therefore serves self-hosted deployments; clingo is the backend for artifacts. The router's preference list differs per host.
+- MiniZinc's npm package needs a native MiniZinc install in Node; the Node test run uses it, and the browser run covers the WebAssembly path.
+
+### 10. Every iteration passes on both bundled models
+
+CI runs the whole suite against the minimal example and the reference model on every push (model-format design §4).
 
 ## Risks / Trade-offs
 
-- [Brute force too slow for some tests] → Restrict it to unfixed variables; for tests with few choices, sample assignments and keep exhaustive checks for the named scenarios.
-- [`z3-solver` needs `SharedArrayBuffer` and therefore cross-origin isolation] → Measured in the browser run; if so, it counts against the UVL route under decision 7.
-- [Two model files drift apart] → The parity test against `reference.json`.
-- [QuickXplain too slow at this size] → Seed it with the backend's native core where available.
-- [Response-time target of 2 seconds is a guess] → Revisit it with the first measurements; changing it changes the spec.
-
-## Open Questions
-
-- Exact unit price, budget and traffic values for R10: chosen while writing the numeric scenarios; they do not change the approach.
+- [Re-grounding on every clingo call misses the response-time target] → Measured first (task 5.1). Fallbacks: batch per-option checks into one brave/cautious call; restrict toggled assumptions; consider a multi-shot build later.
+- [`clingo-wasm` has one maintainer] → The backend is a module; MiniZinc covers self-hosted use.
+- [Oracle and backends share a misreading of the model] → Hand-written scenarios from the specs are checked against both.
+- [Response-time target of 2 seconds is a guess] → Revised with measurements; changing it changes the spec.
