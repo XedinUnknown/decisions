@@ -51,7 +51,7 @@ For every feasible unchosen option, the solver SHALL report its value per cost, 
 
 #### Scenario: Zero cost
 - **WHEN** an option has cost 0
-- **THEN** no ratio is reported for it, and its value is
+- **THEN** no ratio is reported for it, and its value is still reported
 
 ### Requirement: Assumptions behind cost answers
 Every range, cheapest, most valuable and Pareto answer SHALL list the unknown assumptions whose favourable value it relies on, and the solver SHALL also provide a pessimistic variant in which every unknown yes/no assumption is taken as no.
