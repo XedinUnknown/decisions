@@ -52,3 +52,17 @@ For every feasible unchosen option, the solver SHALL report its value per cost, 
 #### Scenario: Zero cost
 - **WHEN** an option has cost 0
 - **THEN** no ratio is reported for it, and its value is
+
+### Requirement: Assumptions behind cost answers
+Every range, cheapest, most valuable and Pareto answer SHALL list the unknown assumptions whose favourable value it relies on, and the solver SHALL also provide a pessimistic variant in which every unknown yes/no assumption is taken as no.
+
+#### Scenario: Cheapest configuration relies on an open question
+- **WHEN** the cheapest configuration uses `Hosting = Serverless.Functions` with `Realtime = WebSockets` and A1 is unknown
+- **THEN** the answer lists A1 as relied on, and the pessimistic variant returns a configuration that does not need A1
+
+### Requirement: Consequences next to ratios
+Value per cost for an option SHALL be reported together with the consequences that choosing the option would make true.
+
+#### Scenario: Cheap option with a costly consequence
+- **WHEN** `Logging = FullBodies` has a high value per cost
+- **THEN** its report also lists K1 (personal data at rest) and K3 (privacy review widens)
