@@ -13,7 +13,7 @@ Test tasks come before the implementation tasks they cover. A new test must fail
 ## 2. Bundled models (fixtures first)
 
 - [ ] 2.1 Write `examples/minimal.yaml` per design.md §3 and add it to the README's "what this solves" section with a short walk-through; verify the README renders the example and its expected answers
-- [ ] 2.2 Write `examples/reference.yaml` per the `solver-core` design's reference model, with costs and values on the Fibonacci scale and at least one combination term
+- [ ] 2.2 Write `examples/reference.yaml` per design.md §3, with costs and values sized by the Fibonacci guide and at least one combination term
 - [ ] 2.3 Write a test that checks `reference.yaml` against the profile targets in the "Reference model profile" scenario; verify it fails until the loader exists
 
 ## 3. Schema and loader
@@ -24,7 +24,7 @@ Test tasks come before the implementation tasks they cover. A new test must fail
 ## 4. Semantic validation and CLI
 
 - [ ] 4.1 Write one test per scenario in `specs/model/validation/spec.md`, including line and column in error messages; verify they fail because the validator does not exist
-- [ ] 4.2 Implement the semantic pass (references, duplicates, consequence cycles, scales, numeric terms, warnings) and verify the tests from 4.1 pass
+- [ ] 4.2 Implement the semantic pass (references, duplicates, consequence cycles, integer costs and values, numeric terms, warnings including the sizing guide) and verify the tests from 4.1 pass
 - [ ] 4.3 Implement the `validate` command and verify it exits 0 on both bundled models and non-zero on an invalid fixture
 - [ ] 4.4 Write one test per scenario in `specs/model/decision-records/spec.md`, using MADR and EventCatalog-style record fixtures; verify they fail because sync and check do not exist
 - [ ] 4.5 Implement the `sync` command (frontmatter only, in-place YAML edit, consistency checks) and the `check` command (fingerprint and hand-edit drift), add `check` to CI, and verify the tests from 4.4 pass and an unchanged sync leaves the file byte-for-byte identical

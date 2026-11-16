@@ -89,7 +89,8 @@ The oracle is itself a backend module declaring every query kind, so the shared 
 ### 9. Runtime and deployment
 
 - TypeScript, Vitest in Node, plus a browser run of the same suite from a static page.
-- WebAssembly files ship with the application. A claude.ai artifact cannot fetch them from a CDN, and is not cross-origin isolated (ADR-0003, probe results).
+- WebAssembly files ship with the application: the build step copies each backend's JavaScript and `.wasm` files into the output, and an artifact publish includes them with the page. A claude.ai artifact cannot fetch them from a CDN, and is not cross-origin isolated (ADR-0003, probe results).
+- No server-side backend (ADR-0003 lists when to revisit).
 - MiniZinc's `minizinc.wasm` (18.9 MB) is over the 15 MB limit for a single file published with an artifact. MiniZinc therefore serves self-hosted deployments; clingo is the backend for artifacts. The router's preference list differs per host.
 - MiniZinc's npm package needs a native MiniZinc install in Node; the Node test run uses it, and the browser run covers the WebAssembly path.
 

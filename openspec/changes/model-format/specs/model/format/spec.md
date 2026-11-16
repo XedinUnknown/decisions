@@ -77,7 +77,7 @@ A model SHALL declare consequences as named expressions over choices, assumption
 - **THEN** the model is valid
 
 ### Requirement: Cost and value
-Options and combinations of options MAY carry a cost and a value, and validation SHALL check them against the model's scale. By default both are relative points on the scale 0, 1, 2, 3, 5, 8, 13, 21; a model MAY instead declare a unit (for example hours or money), in which case any non-negative integer is allowed.
+Options and combinations of options MAY carry a cost and a value. Both SHALL be non-negative integers in which every point counts the same, so that sums and ratios are meaningful. By default they are relative points; a model MAY instead declare a measured unit (for example hours or money). A model MAY declare `guide: fibonacci`, which makes validation warn about values that are not Fibonacci numbers without rejecting them.
 
 #### Scenario: Combination term
 - **WHEN** a combination term gives `{all: [{in: [Hosting, Serverless]}, {is: [Realtime, WebSockets]}]}` an extra cost of 5
@@ -86,6 +86,14 @@ Options and combinations of options MAY carry a cost and a value, and validation
 #### Scenario: Declared unit
 - **WHEN** a model declares its cost unit as `hours`
 - **THEN** an option cost of 40 is valid
+
+#### Scenario: Value off the Fibonacci guide
+- **WHEN** a model declares `guide: fibonacci` and an option has cost 4
+- **THEN** the model is valid, with a warning naming the option and the nearest guide values 3 and 5
+
+#### Scenario: Negative or fractional value
+- **WHEN** an option has cost 2.5 or -1
+- **THEN** validation fails with an error naming the option
 
 ### Requirement: Bundled examples
 The project SHALL ship a minimal example model and a reference model, both valid.

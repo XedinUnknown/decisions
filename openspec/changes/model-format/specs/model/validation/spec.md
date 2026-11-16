@@ -28,18 +28,18 @@ Validation SHALL reject a model that does not match the JSON Schema.
 - **THEN** validation fails with an error naming the decision
 
 ### Requirement: Semantic checks
-Validation SHALL reject unknown references, duplicate ids, cycles between consequences, values off the declared scale, and comparisons between non-numeric terms.
+Validation SHALL reject unknown references, duplicate ids, cycles between consequences, negative or fractional costs and values, and comparisons between non-numeric terms.
 
 #### Scenario: Consequence cycle
 - **WHEN** K1 is defined using K2 and K2 using K1
 - **THEN** validation fails with an error naming K1 and K2
 
-#### Scenario: Off-scale value
-- **WHEN** an option has cost 4 and the model uses the default relative scale
-- **THEN** validation fails with an error naming the option and the allowed values
+#### Scenario: Fractional value
+- **WHEN** an option has cost 2.5
+- **THEN** validation fails with an error naming the option
 
 ### Requirement: Warnings for suspicious models
-Validation SHALL warn, without failing, about assumptions no rule uses and rules that are unrated.
+Validation SHALL warn, without failing, about assumptions no rule uses, rules that are unrated, and costs or values off the model's declared sizing guide.
 
 #### Scenario: Unused assumption
 - **WHEN** assumption A6 is declared but no rule refers to it

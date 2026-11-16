@@ -20,6 +20,7 @@ date: 2026-11-16
 * clingo (`clingo-wasm`)
 * MiniZinc (`minizinc`)
 * UVL compiled to SMT-LIB, solved with Z3 (`z3-solver`)
+* Z3 (or native clingo) as a server-side backend
 
 ## Decision Outcome
 
@@ -45,7 +46,17 @@ A probe page published as a claude.ai artifact and opened in the Claude desktop 
 * `clingo-wasm` 0.6.0 published together with the page (its JavaScript and `clingo.wasm` as the artifact's own files) runs: brave mode, cautious mode and `#minimize` returned the expected results.
 * MiniZinc 4.5.2 loaded from the CDN, with its worker started from a same-origin blob, timed out after 30 s. Its `minizinc.wasm` (18.9 MB) also exceeds the 15 MB limit for a single binary file published with an artifact, so it cannot be self-hosted the way clingo is. MiniZinc therefore does not run inside a claude.ai artifact; it remains a candidate for self-hosted deployments.
 
-Consequence for deployment: solver WebAssembly files ship with the application, not from a CDN. The `solver-core` change records further measurements in its design.
+Consequence for deployment: solver WebAssembly files ship with the application, not from a CDN. The application's build step copies each backend's JavaScript and `.wasm` files into its output (bundlers handle this; `clingo-wasm` documents that Vite needs `worker: { format: "es" }`), and publishing to a claude.ai artifact includes the same files with the page, as the probe did. The `solver-core` change records further measurements in its design.
+
+### Server-side backend: not now
+
+A server-side backend would run Z3, or native clingo with multi-shot solving and its Python explanation tools, outside the browser. It is not built now, because:
+
+* clingo in the browser already answers every query kind the specs need, and MiniZinc covers arithmetic where it can be self-hosted.
+* Z3's distinctive strengths (real-number arithmetic, strings, native unsatisfiable cores and consequence queries) are not needed by the current specs.
+* A server is one more service to run and secure, and it would send model data off the viewer's device.
+
+Revisit when one of these holds: models need real-number arithmetic; models become too large for the browser; native multi-shot solving is needed for response time; or explanations need tools that exist only natively. The module mechanism ([ADR-0005](0005-solving-tools-as-modules.md)) admits a server-side backend, for example exposed as an MCP server, without engine changes.
 
 ## More Information
 

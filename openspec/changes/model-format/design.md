@@ -22,6 +22,7 @@ See proposal.md. Standing decisions: [ADR-0002](../../../docs/decisions/0002-own
 ```yaml
 model: web-app
 scale: relative            # or: {unit: hours}
+guide: fibonacci           # optional: warn about off-guide sizes
 decisions:
   Sessions:
     options:
@@ -91,7 +92,7 @@ The `x-decision` field fits both MADR (frontmatter is optional metadata) and Eve
 ### 2. Validation in two passes
 
 1. JSON Schema (structure, types, enums), with errors mapped back to YAML line and column through the parser's source map.
-2. Semantic pass over the parsed model: reference resolution, duplicate ids, consequence cycle detection (depth-first search), scale checks, numeric-term checks, warnings.
+2. Semantic pass over the parsed model: reference resolution, duplicate ids, consequence cycle detection (depth-first search), integer checks on costs and values, numeric-term checks, warnings (including off-guide sizes).
 
 Both passes collect all errors before reporting.
 
@@ -133,7 +134,7 @@ Hidden choices: `InstantRevocation`, `AuditTrail`. Consequences: K1 personal dat
 
 Assumptions (14): A1 long-lived WebSockets on the platform · A2 serverless SQL connection limits suffice · A3 external KV store in region · A4 PaaS sticky sessions · A5 database driver runs at the edge · A6 CDN does not buffer SSE · A7 processors offer hosting in region · A8 identity provider supports instant revocation · A9 database cross-region replication · A10 expected monthly requests (numeric) · A11 search latency target met · A12 log pipeline can redact bodies · A13 CDN passes WebSocket upgrades · A14 team can operate a cluster. Rules for A3, A6, A8, A11–A14 are added while writing the file, so that every assumption is used; Hosting must end up depending on at least 4 (A1, A4, A5, A14), and at least 2 assumptions must affect 2 decisions each.
 
-Costs and values use the Fibonacci scale, chosen so that the cheapest options conflict through at least one hard rule and the cheapest and most valuable configurations differ. At least one combination term (serverless with WebSockets) changes a total.
+Costs and values are sized with the Fibonacci guide, chosen so that the cheapest options conflict through at least one hard rule and the cheapest and most valuable configurations differ. At least one combination term (serverless with WebSockets) changes a total.
 
 ### 4. Process rule: every iteration passes on the reference model
 
