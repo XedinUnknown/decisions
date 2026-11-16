@@ -23,6 +23,18 @@ mise use -g npm:@fission-ai/openspec@2.0.0
 
 Validate changes and specs with `openspec validate`.
 
+### Test-driven development
+
+Work goes from spec to tests to implementation, in that order:
+
+1. **Spec:** each requirement in a change's spec deltas has scenarios (WHEN/THEN) that are concrete enough to test.
+2. **Tests:** every scenario becomes at least one automated test, written and run before the implementation. The new tests must fail at first, for the expected reason.
+3. **Implementation:** write the minimum code that makes the tests pass, then refactor with the tests passing.
+
+A change's `tasks.md` lists test tasks before the implementation tasks they cover.
+
+Tests of solving behaviour run against a reference model whose size and structure are comparable to a real-world specification, not only against toy models.
+
 ## Branches
 
 Branch from `0.1.x` and open pull requests against it. `master` receives stable releases only.
