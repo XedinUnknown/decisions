@@ -43,7 +43,7 @@ A probe page published as a claude.ai artifact and opened in the Claude desktop 
 * The page is not cross-origin isolated and `SharedArrayBuffer` is unavailable, so `z3-solver` cannot start there. WebAssembly compilation is allowed.
 * `clingo-wasm` 0.6.0 loaded from the jsDelivr CDN fails: the artifact's content-security policy blocks fetching `clingo.wasm` from the CDN.
 * `clingo-wasm` 0.6.0 published together with the page (its JavaScript and `clingo.wasm` as the artifact's own files) runs: brave mode, cautious mode and `#minimize` returned the expected results.
-* MiniZinc: pending a corrected probe. Its `minizinc.wasm` (18.9 MB) exceeds the 15 MB limit for a single binary file published with an artifact, so it cannot be self-hosted the way clingo is.
+* MiniZinc 4.5.2 loaded from the CDN, with its worker started from a same-origin blob, timed out after 30 s. Its `minizinc.wasm` (18.9 MB) also exceeds the 15 MB limit for a single binary file published with an artifact, so it cannot be self-hosted the way clingo is. MiniZinc therefore does not run inside a claude.ai artifact; it remains a candidate for self-hosted deployments.
 
 Consequence for deployment: solver WebAssembly files ship with the application, not from a CDN. The `solver-core` change records further measurements in its design.
 
