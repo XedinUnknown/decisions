@@ -4,8 +4,8 @@ Test tasks come before the implementation tasks they cover. A new test must fail
 
 ## 1. Project scaffolding
 
-- [ ] 1.1 Create the TypeScript workspace with a `packages/model/` package (`package.json`, `tsconfig.json`, Vitest) and verify `npx vitest run` exits successfully with an empty suite
-- [ ] 1.2 Add a `Makefile` with `setup`, `build`, `dev` and `test` targets (no Docker inside it) and verify each target runs
+- [ ] 1.1 Turn the root into a pnpm workspace with a `packages/model/` package (`package.json`, `tsconfig.json`, Vitest) and verify `pnpm exec vitest run` exits successfully with an empty suite
+- [ ] 1.2 Add `build`, `dev` and `test` targets to the existing `Makefile` and extend `setup` to install the workspace dependencies (no Docker inside it), and verify each target runs
 - [ ] 1.3 Add `docker-compose.yml` with a Node service that runs `make test`, plus `.env.example`, and verify `docker compose run --rm dev make test` passes
 - [ ] 1.4 Add a GitHub Actions workflow that runs `make test` on pushes and pull requests to `0.1.x`, and verify it passes on a pushed branch
 - [ ] 1.5 Update CONTRIBUTORS.md with the new targets and the rule that every iteration passes the full suite against both bundled models, and verify the documented commands run as written

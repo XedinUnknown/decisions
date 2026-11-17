@@ -1,0 +1,15 @@
+{
+  "name": "decisions",
+  "private": true,
+  "packageManager": "pnpm@12.21.0",
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": "22",
+      "onFail": "download"
+    }
+  },
+  "devDependencies": {
+    "@fission-ai/openspec": "2.0.0"
+  }
+}

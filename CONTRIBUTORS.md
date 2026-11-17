@@ -2,17 +2,13 @@
 
 ## Setup
 
-The stack isn't chosen yet (see [concept §10](docs/concept.md#10-open-questions)), so there is no build or dev environment yet. Planning needs only the OpenSpec CLI (Node.js 22.12+):
+The stack isn't chosen yet (see [concept §10](docs/concept.md#10-open-questions)), so there is no build or dev environment yet. `package.json` pins everything: pnpm (`packageManager`), Node (`devEngines.runtime`) and the packages, including the OpenSpec CLI. The code runs on Node, not Bun, because the solvers were checked there ([ADR-0003](docs/decisions/0003-clingo-first-minizinc-second.md)). Install [pnpm](https://pnpm.io/installation) in any way, then run:
 
 ```bash
-npm install -g @fission-ai/openspec@2.0.0
+make setup
 ```
 
-Or, with mise:
-
-```bash
-mise use -g npm:@fission-ai/openspec@2.0.0
-```
+pnpm switches itself to the pinned version, downloads the pinned Node into `node_modules`, installs the packages from the lockfile, then generates the OpenSpec skills into `.agents/skills/` (linked from `.claude/skills/`) for Claude Code, Codex and OpenCode. The skills are not committed; run `make setup` again after updating OpenSpec. Run the CLI with `pnpm exec openspec`.
 
 ## Workflow
 
