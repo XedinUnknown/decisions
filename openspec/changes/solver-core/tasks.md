@@ -1,18 +1,20 @@
 # Tasks
 
-Builds on the `model-format` change (format, validator, both bundled models, Makefile, docker-compose, CI). Test tasks come before the implementation tasks they cover; a new test must fail first, for the expected reason. Every task finishes with the full suite passing on both bundled models; scenarios that need constructs the bundled models lack also use small fixtures.
+Builds on the `composition` change (library, application and platform providers, test harness, Makefile, docker-compose, CI) and the `model-format` change (format, validator, both bundled models). Test tasks come before the implementation tasks they cover; a new test must fail first, for the expected reason. Every task finishes with the full suite passing on both bundled models; scenarios that need constructs the bundled models lack also use small fixtures.
 
-## 1. Module composition
+Tests use `bootstrapProviders` (`composition` design §4): provider tests list the providers under test and a test provider supplying their required keys; command tests list the application and run without and with a prefix.
 
-- [ ] 1.1 Write composition tests per design.md §1: definition, override and extension order; contributions to `solver/backends` in deterministic order; routing by `solver/backend-preference`; a missing-key error. Verify they fail because nothing exists
-- [ ] 1.2 Implement the minimal registry and verify the tests from 1.1 pass
+## 1. Engine providers and routing
+
+- [ ] 1.1 Write tests with the composition harness per design.md §1: `solverProvider` defines every `solver/` key in the table; backends contributed by two providers appear in `solver/backends` in provider order; a later definition of `solver/backend-preference` changes routing; an extension wrapping `solver/router` sees every routed call. Verify they fail because `packages/solver/` does not exist
+- [ ] 1.2 Add `packages/solver/` with `solverProvider` defining the keys of design.md §1 (empty backends and queries), add it to `decisionsProvider`, bind `solver/load-wasm` in `nodeProvider` and `testPlatformProvider`, and verify the tests from 1.1 that do not need routing pass
 - [ ] 1.3 Write one test per scenario in `specs/solving/backends/spec.md` using two stub backends with different declared query kinds; verify they fail because the router does not exist
-- [ ] 1.4 Implement the router, fallback rules and query-kind declarations, and verify the tests from 1.3 pass
+- [ ] 1.4 Implement the router, fallback rules and query-kind declarations as `solver/router`, and verify the tests from 1.1 and 1.3 pass
 
 ## 2. Brute-force oracle
 
 - [ ] 2.1 Write tests for the oracle's table on the minimal example with hand-checked answers (satisfying assignment masks, possible and forced options, consequences, totals), plus a test that one table build for the reference model finishes within 10 s in Node; verify they fail because the oracle does not exist
-- [ ] 2.2 Implement the bit-parallel oracle per design.md §8 (assumption masks, per-soft-rule violation masks, numeric sampling at rule boundaries) as a backend module declaring every query kind, and verify the tests from 2.1 pass
+- [ ] 2.2 Implement the bit-parallel oracle per design.md §8 (assumption masks, per-soft-rule violation masks, numeric sampling at rule boundaries) as a backend declaring every query kind, contributed by `oracleProvider`, and verify the tests from 2.1 pass
 
 ## 3. Conformance suite (before any real backend)
 
@@ -39,13 +41,13 @@ Builds on the `model-format` change (format, validator, both bundled models, Mak
 
 - [ ] 5.1 Write compiler tests for every row of design.md §3 against small models; verify they fail because the compiler does not exist
 - [ ] 5.2 Implement the clingo compiler for the minimal example and measure one cold `check` and one brave/cautious call in Node and in a browser. Go on if a full propagation of the reference model, estimated from the measured calls per second and the number of calls design.md §6 needs, fits within 2 s; otherwise record the shortfall in design.md and revise the approach (batched calls, fewer conditions computed eagerly) before continuing
-- [ ] 5.3 Complete the clingo compiler and backend module (all query kinds), and verify the compiler tests and the conformance suite pass on both bundled models
+- [ ] 5.3 Complete the clingo compiler and backend, contributed by `clingoProvider` (all query kinds, WebAssembly through `solver/load-wasm`), and verify the compiler tests and the conformance suite pass on both bundled models
 
 ## 6. MiniZinc backend
 
 - [ ] 6.1 Add native MiniZinc to the development container and the CI image, and verify `minizinc --version` runs in both
 - [ ] 6.2 Write compiler tests for every row of design.md §3 against small models, including the level-weighted objective; verify they fail because the compiler does not exist
-- [ ] 6.3 Implement the MiniZinc compiler and backend module (`check`, `optimise`, `consequences`), and verify the compiler tests and the conformance suite pass for those kinds on both bundled models
+- [ ] 6.3 Implement the MiniZinc compiler and backend, contributed by `minizincProvider` (`check`, `optimise`, `consequences`), and verify the compiler tests and the conformance suite pass for those kinds on both bundled models
 
 ## 7. Browser run and measurements
 
@@ -55,9 +57,9 @@ Builds on the `model-format` change (format, validator, both bundled models, Mak
 
 ## 8. Decision record
 
-- [ ] 8.1 Write a new ADR that confirms or supersedes ADR-0003 with the measurements from groups 5–7 (order and per-host preference), and update docs/concept.md §10 to close Q3, Q6 and Q7; verify no `[U]` claim this change closed is still tagged `[U]`
+- [ ] 8.1 Write a new ADR that confirms or supersedes ADR-0003 with the measurements from groups 5–7 (order and per-platform preference), and update docs/concept.md §10 to close Q3, Q6 and Q7; verify no `[U]` claim this change closed is still tagged `[U]`
 
 ## Workflow follow-up
 
 - Archive the change after review.
-- Candidate later changes as query modules: goals on consequences ("what must hold for this consequence to stay false?", answered with forced and impossible choices and repairs), what-if, which open question to answer first (value of information), per-instance decisions, EventCatalog generator (decisions as EventCatalog ADRs via `@eventcatalog/sdk` `writeAdr`).
+- Candidate later changes, each a provider extending `solver/queries`: goals on consequences ("what must hold for this consequence to stay false?", answered with forced and impossible choices and repairs), what-if, which open question to answer first (value of information), per-instance decisions, EventCatalog generator (decisions as EventCatalog ADRs via `@eventcatalog/sdk` `writeAdr`).

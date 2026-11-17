@@ -37,7 +37,21 @@ Chosen option: "clingo first, MiniZinc second; Z3 dropped from the spike", becau
 * Bad, because `clingo-wasm` has a single maintainer.
 * Bad, because `clingo-wasm` wraps the command-line tool, so each check re-grounds the model; whether that meets the response-time target must be measured early.
 
-### Confirmation
+### Server-side backend: not now
+
+A server-side backend would run Z3, or native clingo with multi-shot solving and its Python explanation tools, outside the browser. It is not built now, because:
+
+* clingo in the browser already answers every query kind the specs need, and MiniZinc covers arithmetic where it can be self-hosted.
+* Z3's distinctive strengths (real-number arithmetic, strings, native unsatisfiable cores and consequence queries) are not needed by the current specs.
+* A server is one more service to run and secure, and it would send model data off the viewer's device.
+
+Revisit when one of these holds: models need real-number arithmetic; models become too large for the browser; native multi-shot solving is needed for response time; or explanations need tools that exist only natively. Composition ([ADR-0005](0005-application-composed-from-config-based-modules.md)) lets a provider add a server-side backend, for example one exposed as an MCP server, without engine changes.
+
+## More Information
+
+* Specified in the `solver-core` change's `solving/backends` capability.
+
+### Probe of 2026-11-16
 
 A probe page published as a claude.ai artifact and opened in the Claude desktop app on 2026-11-16 found:
 
@@ -48,16 +62,6 @@ A probe page published as a claude.ai artifact and opened in the Claude desktop 
 
 Consequence for deployment: solver WebAssembly files ship with the application, not from a CDN. The application's build step copies each backend's JavaScript and `.wasm` files into its output (bundlers handle this; `clingo-wasm` documents that Vite needs `worker: { format: "es" }`), and publishing to a claude.ai artifact includes the same files with the page, as the probe did. The `solver-core` change records further measurements in its design.
 
-### Server-side backend: not now
-
-A server-side backend would run Z3, or native clingo with multi-shot solving and its Python explanation tools, outside the browser. It is not built now, because:
-
-* clingo in the browser already answers every query kind the specs need, and MiniZinc covers arithmetic where it can be self-hosted.
-* Z3's distinctive strengths (real-number arithmetic, strings, native unsatisfiable cores and consequence queries) are not needed by the current specs.
-* A server is one more service to run and secure, and it would send model data off the viewer's device.
-
-Revisit when one of these holds: models need real-number arithmetic; models become too large for the browser; native multi-shot solving is needed for response time; or explanations need tools that exist only natively. The module mechanism ([ADR-0005](0005-solving-tools-as-modules.md)) admits a server-side backend, for example exposed as an MCP server, without engine changes.
-
-## More Information
+### Prior art
 
 * Siemens' interactive configuration API over clingo ([Comploi-Taupe et al., ConfWS 2023](https://www.cs.uni-potsdam.de/wv/publications/DBLP_conf/confws/Comploi-TaupeFH23.pdf)) passes user choices as external atoms, so "no re-grounding is required". Its implementation, [OOASP](https://github.com/siemens/OOASP), is Python.

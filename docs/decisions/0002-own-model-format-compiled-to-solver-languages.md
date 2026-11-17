@@ -7,7 +7,7 @@ date: 2026-11-16
 
 ## Context and Problem Statement
 
-A decision model (decisions, options, rules, assumptions, consequences, costs) has to reach one or more solvers. [Concept §4.2](../concept.md#42-gap-constraint-metadata) rejected a custom JSON format in favour of authoring directly in a standard language (UVL or MiniZinc) for portability. Since then, the engine has become modular: several backends may answer different kinds of questions over the same model ([ADR-0005](0005-solving-tools-as-modules.md)), and an AI is expected to maintain models through conversation. What is the authoritative model format?
+A decision model (decisions, options, rules, assumptions, consequences, costs) has to reach one or more solvers. [Concept §4.2](../concept.md#42-gap-constraint-metadata) rejected a custom JSON format in favour of authoring directly in a standard language (UVL or MiniZinc) for portability. Since then, the application has become composed from modules: several backends may answer different kinds of questions over the same model ([ADR-0005](0005-application-composed-from-config-based-modules.md)), and an AI is expected to maintain models through conversation. What is the authoritative model format?
 
 ## Decision Drivers
 
@@ -36,10 +36,7 @@ The IR has the element kinds of the concept (decisions with options, hidden yes/
 * Bad, because the format is not a standard; its documentation and schema are this project's responsibility.
 * Bad, because each backend needs a compiler (expected to be a few hundred lines each).
 
-### Confirmation
-
-The `model-format` change ships the JSON Schema, the minimal example and the reference model, and every backend's conformance tests load models only through the IR.
-
 ## More Information
 
+* Specified in the `model-format` change (format, validation, bundled models) and the `solver-core` change (compilers and backends).
 * The [Potassco COOM Suite](https://github.com/potassco/coom-suite) (MIT) is a configuration language compiled to clingo; read it before fixing the IR's details.

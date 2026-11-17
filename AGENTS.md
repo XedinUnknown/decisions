@@ -6,6 +6,7 @@
 
 - [docs/concept.md](docs/concept.md) is the product concept. It is a draft and records no decisions. Read it before exploring or proposing a change.
 - Claims tagged `[U]` (unverified) or `[?]` (unknown) in the concept must not be built on. A change that depends on one either closes it first (as a spike) or names it as an explicit assumption.
+- [docs/glossary.md](docs/glossary.md) defines the project's terms. Use them with those meanings; add or change a term there before using it differently.
 - [docs/decisions/](docs/decisions/) holds accepted decisions (MADR). They override the concept where the two disagree; cite them by number.
 - OpenSpec owns planning: `openspec/specs/` describes shipped behaviour, and `openspec/changes/` holds proposals. Project context for OpenSpec lives in [openspec/config.yaml](openspec/config.yaml).
 

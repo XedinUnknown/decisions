@@ -2,7 +2,7 @@
 
 ## Context
 
-See proposal.md. Standing decisions: [ADR-0002](../../../docs/decisions/0002-own-model-format-compiled-to-solver-languages.md) (own format), [ADR-0004](../../../docs/decisions/0004-confidence-as-ordered-levels.md) (confidence levels), [ADR-0006](../../../docs/decisions/0006-relative-cost-and-value.md) (cost and value), [ADR-0007](../../../docs/decisions/0007-decisions-are-decision-records.md) (decision records). The reference model's shape follows the structural profile of a real specification; that specification and its model are kept outside this repository.
+See proposal.md. Standing decisions: [ADR-0002](../../../docs/decisions/0002-own-model-format-compiled-to-solver-languages.md) (own format), [ADR-0004](../../../docs/decisions/0004-confidence-as-ordered-levels.md) (confidence levels), [ADR-0005](../../../docs/decisions/0005-application-composed-from-config-based-modules.md) (composition), [ADR-0006](../../../docs/decisions/0006-relative-cost-and-value.md) (cost and value), [ADR-0007](../../../docs/decisions/0007-decisions-are-decision-records.md) (decision records). The reference model's shape follows the structural profile of a real specification; that specification and its model are kept outside this repository.
 
 ## Goals / Non-Goals
 
@@ -198,6 +198,27 @@ How it meets the profile: 10 decisions, one with option families; 16 constrainin
 ### 4. Process rule: every iteration passes on both bundled models
 
 From this change onwards, CI runs the full suite against both bundled models on every push. Scenarios that need a construct neither bundled model has (for example three `plausible` rules competing with one `likely` rule) use small fixtures in addition, never instead.
+
+### 5. Providers and keys
+
+Everything in this change is contributed through composition (`composition` change, design §2). `packages/model/` exports two providers, added to `decisionsProvider` after `cliProvider`:
+
+| Key | Value | Contributed by |
+| --- | --- | --- |
+| `model/schema` | the JSON Schema | `modelProvider` |
+| `model/parse` | YAML text → model with source positions | `modelProvider` |
+| `model/files` | reads a file by path; required, not defined | bound by the platform provider |
+| `model/load` | path → model, reading through `model/files` | `modelProvider` |
+| `model/checks` | list of semantic checks, each model → errors and warnings | `modelProvider` defines the checks of §2; any provider may extend the list |
+| `model/validate` | model → all errors and warnings (schema, then every check in `model/checks`) | `modelProvider` |
+| `records/files` | reads and writes record files; required, not defined | bound by the platform provider |
+| `records/readers` | map from record style (`madr`, `eventcatalog`) to a frontmatter reader | `recordsProvider`; extended for new styles |
+| `records/sync`, `records/check` | the operations of the `model/decision-records` spec | `recordsProvider` |
+| `cli/commands` | extended with `validate`, `sync` and `check` | `modelProvider`, `recordsProvider` |
+
+Semantic checks are a list rather than one function so that later changes (for example `solver-core`, or a team's own conventions) add checks by extending `model/checks` instead of editing the validator. No code in `packages/model/` imports `node:` modules: file access comes from the required keys, which `nodeProvider` binds to `node/files` with aliases, and output goes through the commands' `cli/output`.
+
+*Alternative:* one provider for the whole package. Two keep record handling optional: a system that loads the model without decision records leaves `recordsProvider` out.
 
 ## Risks / Trade-offs
 

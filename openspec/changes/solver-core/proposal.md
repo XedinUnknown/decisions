@@ -11,7 +11,7 @@ Every later stage of the product (configurator UI, export, write-up, EventCatalo
 - Explain infeasibility with minimal conflicts (QuickXplain), and suggest **repairs**: the smallest sets of choices to change so that a wanted option becomes feasible (FastDiag), as configurator research found users need ([range fixes](https://gsd.uwaterloo.ca/publications/view/436.html)).
 - Treat rules below a confidence threshold as soft and blame doubtful rules level first ([ADR-0004](../../../docs/decisions/0004-confidence-as-ordered-levels.md)).
 - Report consequences, totals, ranges, cheapest and most valuable configurations, the cost/value Pareto front, and value per cost for ranking options ([ADR-0006](../../../docs/decisions/0006-relative-cost-and-value.md)).
-- Make solving tools modules that declare the query kinds they answer ([ADR-0005](../../../docs/decisions/0005-solving-tools-as-modules.md)).
+- Contribute the engine through composition ([ADR-0005](../../../docs/decisions/0005-application-composed-from-config-based-modules.md)): backends, query handlers and the router are values under `solver/` keys, so any provider can add a backend or a question, or wrap the router, without changing the engine. Backends declare the query kinds they answer.
 - Build two backends, clingo first and MiniZinc second ([ADR-0003](../../../docs/decisions/0003-clingo-first-minizinc-second.md)), each with a compiler from the model format, plus a brute-force backend as test oracle.
 - Measure in a browser and inside a claude.ai artifact, and record the results in a new ADR that confirms or supersedes ADR-0003.
 - Report accepted decisions that no longer hold: stale (relying on a retired rule) or in conflict with the current choices.
@@ -28,7 +28,7 @@ Out of scope: the configurator UI and its list orderings, JSON export, LLM write
 - `solving/soft-rules`: Rules below a confidence threshold do not remove options; doubtful rules are blamed level first.
 - `solving/consequences`: Derived outcomes reported for a configuration and usable by rules.
 - `solving/cost`: Totals, ranges, cheapest and most valuable configurations, the Pareto front, and value per cost.
-- `solving/backends`: Solving tools as modules that declare supported query kinds, with routing and rejection of unsupported queries.
+- `solving/backends`: Solving tools, added through composition, that declare supported query kinds, with routing, fallback and rejection of unsupported queries.
 
 ### Modified Capabilities
 
@@ -41,6 +41,6 @@ None.
 - **Unverified claims relied on or closed:**
   - `[U]` one solver call per option is fast enough (§5): measured on the reference model, in a browser.
   - `[U]` per-value assumption checks (§5): closed by both backends.
-- **Depends on:** the `model-format` change.
-- **New code:** a TypeScript package with the module registry, query handlers, the clingo and MiniZinc backends with their compilers, and the brute-force oracle.
+- **Depends on:** the `composition` and `model-format` changes.
+- **New code:** `packages/solver/` with the engine's providers: query handlers and router, the clingo and MiniZinc backends with their compilers, and the brute-force oracle.
 - **Dependencies:** `clingo-wasm`, `minizinc`. Their WebAssembly files ship with the application, because a claude.ai artifact cannot fetch them from a CDN (ADR-0003).

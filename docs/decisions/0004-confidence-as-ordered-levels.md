@@ -46,11 +46,8 @@ Chosen option: "Ordered levels, compared level first", because it matches how th
 * Good, because clingo optimises with priority levels natively.
 * Bad, because two rules at the same level count as equally doubtful even if their authors felt differently.
 
-### Confirmation
-
-The `solving/soft-rules` spec has a scenario where one "likely" rule and three "plausible" rules compete, and the three "plausible" rules are blamed.
-
 ## More Information
 
+* Specified in the `solver-core` change's `solving/soft-rules` capability.
 * Summing confidences is neither probabilistic nor [possibilistic](https://www.ijcai.org/proceedings/2025/1158.pdf); ordered levels follow the possibilistic reading.
 * Verbal labels are read inconsistently without numbers ([Kent 1964](https://www.cia.gov/resources/csi/static/Words-of-Estimative-Probability.pdf); [Budescu et al. 2009](https://research.library.fordham.edu/psych_facultypubs/87)).

@@ -2,7 +2,7 @@
 
 ## Context
 
-See proposal.md. Models come in the format defined by the `model-format` change, which also ships the minimal example and the reference model. Standing decisions: [ADR-0003](../../../docs/decisions/0003-clingo-first-minizinc-second.md) (clingo first, MiniZinc second), [ADR-0004](../../../docs/decisions/0004-confidence-as-ordered-levels.md) (confidence levels), [ADR-0005](../../../docs/decisions/0005-solving-tools-as-modules.md) (modules), [ADR-0006](../../../docs/decisions/0006-relative-cost-and-value.md) (cost and value). Development is test-first ([CONTRIBUTORS.md](../../../CONTRIBUTORS.md)).
+See proposal.md. Everything is contributed through the `composition` change's library and added to its application provider. Models come in the format defined by the `model-format` change, which also ships the minimal example and the reference model. Standing decisions: [ADR-0003](../../../docs/decisions/0003-clingo-first-minizinc-second.md) (clingo first, MiniZinc second), [ADR-0004](../../../docs/decisions/0004-confidence-as-ordered-levels.md) (confidence levels), [ADR-0005](../../../docs/decisions/0005-application-composed-from-config-based-modules.md) (composition), [ADR-0006](../../../docs/decisions/0006-relative-cost-and-value.md) (cost and value). Development is test-first ([CONTRIBUTORS.md](../../../CONTRIBUTORS.md)).
 
 ## Goals / Non-Goals
 
@@ -16,18 +16,28 @@ See proposal.md. Models come in the format defined by the `model-format` change,
 
 ## Decisions
 
-### 1. Modules and routing
+### 1. Providers and keys
 
-Per ADR-0005: backends and query handlers are modules contributing to one composed registry.
+Per ADR-0005, the engine is contributed through composition (`composition` change, design §2) like every other part of the application. Nothing in the engine knows which backends exist: backends, query handlers and the router are values under `solver/` keys, and any provider may add to them. A backend is not a module of its own by rule; a provider may contribute several backends, or a backend together with its compiler.
 
-| Key | Definition | Extended by |
-| --- | --- | --- |
-| `solver/backends` | list, empty | each backend module appends its backend |
-| `solver/backend-preference` | list of backend ids, host-owned | host overrides per environment |
-| `solver/queries` | map from query kind to handler | query modules add handlers |
-| `solver/router` | first preferred backend that declares the kind | — |
+| Key | Value | Defined by | Extended by |
+| --- | --- | --- | --- |
+| `solver/backends` | list of backends, each declaring its query kinds | `solverProvider`, empty | any provider that adds a backend |
+| `solver/backend-preference` | list of backend ids, most preferred first | `solverProvider`, `[clingo, minizinc, oracle]` | a composition root, by a later definition per environment |
+| `solver/time-limit` | milliseconds per backend call | `solverProvider` | a composition root |
+| `solver/queries` | map from question to handler | `solverProvider`, with the handlers of this change | any provider that adds a question |
+| `solver/router` | picks the first preferred loaded backend that declares a kind, with the fallback of the `solving/backends` spec | `solverProvider` | diagnostics, e.g. by wrapping it to log which backend answered |
+| `solver/engine` | the questions of the specs, answered through `solver/queries` and `solver/router` | `solverProvider` | |
+| `solver/load-wasm` | loads a WebAssembly file shipped with the application; required, not defined | bound by the platform provider (`nodeProvider` to `node/load-wasm`) | |
+| `model/checks` | extended with checks a backend needs (e.g. compilable numeric terms) | `model-format` | the provider of that backend |
 
-The registry is the minimal version of config-based modularity: keyed definitions, extensions, override order, one immutable composed registry. Nothing more until a third tool arrives.
+Providers in `packages/solver/`, added to `decisionsProvider` after the `model-format` providers:
+- `solverProvider`: the engine keys above.
+- `clingoProvider`: the clingo backend and its compiler, appended to `solver/backends`; loads its WebAssembly through `solver/load-wasm`.
+- `minizincProvider`: the MiniZinc backend and its compiler.
+- `oracleProvider`: the brute-force backend. Tests always include it; `decisionsProvider` does not.
+
+Tests compose `solverProvider` with exactly the backend providers they exercise; the conformance suite runs once per composition.
 
 ### 2. Backend interface and query kinds
 
@@ -97,14 +107,14 @@ The numeric assumption A10 is sampled at its bounds and at the boundary value of
 
 Possible options, forced options, conditions, consequences and cost ranges are unions and intersections over the table. Minimality of explanations and repairs is checked with the same table. One build per model and threshold is cached for the whole suite.
 
-The oracle is itself a backend module declaring every query kind, so the shared handlers are developed against it before any real backend exists.
+The oracle is itself a backend declaring every query kind, contributed by `oracleProvider`, so the shared handlers are developed against it before any real backend exists.
 
 ### 9. Runtime and deployment
 
 - TypeScript, Vitest in Node, plus a browser run of the same suite from a static page.
 - WebAssembly files ship with the application: the build step copies each backend's JavaScript and `.wasm` files into the output, and an artifact publish includes them with the page. A claude.ai artifact cannot fetch them from a CDN, and is not cross-origin isolated (ADR-0003, probe results).
 - No server-side backend (ADR-0003 lists when to revisit).
-- MiniZinc's `minizinc.wasm` (18.9 MB) is over the 15 MB limit for a single file published with an artifact. MiniZinc therefore serves self-hosted deployments; clingo is the backend for artifacts. The router's preference list differs per host.
+- MiniZinc's `minizinc.wasm` (18.9 MB) is over the 15 MB limit for a single file published with an artifact. MiniZinc therefore serves self-hosted deployments; clingo is the backend for artifacts. The router's preference list differs per platform.
 - MiniZinc's npm package needs a native MiniZinc install in Node; the development container and CI image install it, the Node test run uses it, and the browser run covers the WebAssembly path.
 - The browser run is part of CI and enforces the response-time requirement for the clingo backend.
 
@@ -115,6 +125,6 @@ CI runs the whole suite against the minimal example and the reference model on e
 ## Risks / Trade-offs
 
 - [Re-grounding on every clingo call misses the response-time target] → Measured first (task 5.1). Fallbacks: batch per-option checks into one brave/cautious call; restrict toggled assumptions; consider a multi-shot build later.
-- [`clingo-wasm` has one maintainer] → The backend is a module; MiniZinc covers self-hosted use.
+- [`clingo-wasm` has one maintainer] → The backend is contributed by its own provider and can be left out or replaced; MiniZinc covers self-hosted use.
 - [Oracle and backends share a misreading of the model] → Hand-written scenarios from the specs are checked against both.
 - [Response-time target of 2 seconds is a guess] → Revised with measurements; changing it changes the spec.

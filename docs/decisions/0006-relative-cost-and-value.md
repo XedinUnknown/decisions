@@ -40,10 +40,7 @@ Chosen option: "Equal points, Fibonacci as the sizing guide", because what makes
 * Good, because the guide keeps sizes coarse without rejecting a deliberate in-between value.
 * Bad, because relative sizing is less accurate than hour estimates ([Jørgensen & Escott 2022](https://conf.researchr.org/details/esem-2022/esem-2022-journal-first/4/Relative-estimates-of-software-development-effort-Are-they-more-accurate-or-less-tim)); the model may declare a measured unit when that matters.
 
-### Confirmation
-
-The `model/format` spec accepts off-guide values with a warning; the `solving/cost` spec covers ranking by value per cost, the Pareto front and a combination term that changes a total.
-
 ## More Information
 
+* Specified in the `model-format` change's `model/format` capability and the `solver-core` change's `solving/cost` capability.
 * [RADAR](https://ucl-badass.github.io/radar) reports Pareto fronts for requirements and architecture decisions; see [docs/comparison.md](../comparison.md).

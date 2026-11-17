@@ -549,6 +549,8 @@ A real-world pilot of this approach on a production specification exists, but it
 
 ## 9. Glossary
 
+Background terms from the field. The project's own terms are defined in [glossary.md](glossary.md).
+
 | Term | Meaning |
 | --- | --- |
 | **Constraint solver** | Software that finds assignments satisfying a set of constraints, or proves none exist |

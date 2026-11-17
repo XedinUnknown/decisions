@@ -2,7 +2,7 @@
 
 Decision modelling for business-tech choices that constrain each other. The domain is encoded once as a schema of decisions, options, constraints and unknowns. A constraint solver then propagates feasibility, detects conflicts and explains them. A generated UI renders the model, and an LLM drafts the resulting decision record.
 
-**Status:** concept stage. See [docs/concept.md](docs/concept.md) for the problem and the approach, [docs/comparison.md](docs/comparison.md) for how it compares to existing tools, and [docs/decisions/](docs/decisions/) for the decisions made so far.
+**Status:** concept stage. See [docs/concept.md](docs/concept.md) for the problem and the approach, [docs/comparison.md](docs/comparison.md) for how it compares to existing tools, [docs/decisions/](docs/decisions/) for the decisions made so far, and [docs/glossary.md](docs/glossary.md) for the terms in use.
 
 ## Planning
 

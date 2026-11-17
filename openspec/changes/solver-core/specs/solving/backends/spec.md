@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Lets solving tools be added or swapped as modules, so that new tools can answer new kinds of questions without changing the engine or the existing tools.
+Lets solving tools be added or swapped through composition, so that new tools can answer new kinds of questions without changing the engine or the existing tools.
 
 ## ADDED Requirements
 
@@ -21,10 +21,10 @@ The engine SHALL answer feasibility, conditions, forced options, consequences, e
 - **THEN** the explanation is computed from repeated `check` calls
 
 ### Requirement: Routing and fallback
-For each query, the engine SHALL use the first backend in the host's order of preference that declares the needed kind. When no loaded backend declares `possible`, `forced` or `consequences`, the engine SHALL compute them from repeated `check` calls.
+For each query, the engine SHALL use the first backend in the composition's order of preference that declares the needed kind. When no loaded backend declares `possible`, `forced` or `consequences`, the engine SHALL compute them from repeated `check` calls.
 
 #### Scenario: Preferred backend used
-- **WHEN** two loaded backends both declare `optimise` and the host prefers backend B
+- **WHEN** two loaded backends both declare `optimise` and the composition prefers backend B
 - **THEN** `optimise` queries are answered by backend B
 
 #### Scenario: Fallback to repeated checks
@@ -46,11 +46,15 @@ For every question two loaded backends can both answer, they SHALL return equiva
 - **THEN** every backend's answers are equivalent to the brute-force backend's for the kinds it declares
 
 ### Requirement: Backends added without changing the engine
-Adding a backend SHALL require only providing its module and including it in the host's composition.
+Adding a backend SHALL require only contributing it through a provider included in the composition. One provider MAY contribute several backends.
 
 #### Scenario: Test-only backend
-- **WHEN** a test composes the engine with an extra backend that declares one query kind
-- **THEN** queries of that kind are routed to it, and the engine's own modules are used unmodified
+- **WHEN** a test composes the engine with an extra provider that contributes a backend declaring one query kind
+- **THEN** queries of that kind are routed to it, and no other provider is modified
+
+#### Scenario: Two backends from one provider
+- **WHEN** one provider contributes two backends with different declared kinds
+- **THEN** each kind is routed to the backend that declares it
 
 ### Requirement: Backend failures reported
 When a backend fails to load (for example its WebAssembly cannot be fetched), cannot compile a model construct, or exceeds a configurable time limit, the engine SHALL report an error naming the backend and the cause, SHALL try the next preferred backend that declares the needed kind, and SHALL NOT return a partial answer.

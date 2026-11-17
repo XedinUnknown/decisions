@@ -40,6 +40,6 @@ Chosen option: "The ADR is the decision; a sync step copies its status and outco
 * Good, because the model works anywhere, and a status change appears as a reviewable diff in the model.
 * Bad, because the model can lag behind its ADRs between syncs; the drift check makes that visible rather than preventing it.
 
-### Confirmation
+## More Information
 
-The `model-format` change's `model/decision-records` spec covers the sync, the drift check, and rejection of a model that states a linked decision's status or rationale outside the synced block.
+* Specified in the `model-format` change's `model/decision-records` capability.

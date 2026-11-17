@@ -15,6 +15,7 @@ Every backend, the test oracle and the AI that maintains models need one authori
 - Semantic validation with errors that name the offending id: unknown references, duplicate ids, cycles between consequences, negative or fractional costs and values; warnings for unused assumptions, unrated rules and values off the sizing guide.
 - Ship two models: a **minimal example** (3 decisions, 2 rules, 1 assumption) used in the README and as the first test fixture, and the **reference model** matched to the structural profile of a real specification, used as a stress fixture.
 - A command-line validator that reports every error in a model file.
+- Contribute all of it through composition ([ADR-0005](../../../docs/decisions/0005-application-composed-from-config-based-modules.md)): the loader, the validation checks, record sync and check, and the `validate`, `sync` and `check` commands are values under `model/` and `records/` keys, so later providers can replace them or add checks without changing this package.
 
 Out of scope: solving, compilers to solver languages (each backend brings its own in `solver-core`), UVL import, the evidence layer, per-instance decisions (only reserved here), and writing or updating decision records (process, for the skill).
 
@@ -35,6 +36,6 @@ None.
 - **Concept sections:** §2 (schema stage), §4.2 (rejected custom format; reversed by ADR-0002), §4.4 (confidence levels), §8 (worked example).
 - **Open questions:** settles Q4 in part (models are files, loaded from wherever they live).
 - **Unverified claims relied on:** none.
-- **New code:** a TypeScript package with the schema, validator and CLI; `examples/minimal.yaml` and `examples/reference.yaml`.
+- **New code:** `packages/model/` with the schema, loader, validator, record sync and check, and the providers that contribute them and their commands; `examples/minimal.yaml` and `examples/reference.yaml`.
 - **Dependencies:** a YAML parser and a JSON Schema validator.
-- **Ordering:** `solver-core` builds on this change.
+- **Ordering:** builds on the `composition` change; `solver-core` builds on this change.
